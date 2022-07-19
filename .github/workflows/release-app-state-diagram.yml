@@ -1,5 +1,7 @@
 name: Release (app-state-diagram)
 on:
+  push:
+  pull_request:
   workflow_dispatch:
   release:
     types: [published]
