@@ -90,11 +90,7 @@ EOT;
             . '</head>',
             $html
         );
-        $this->content = str_replace(
-            ['{{ asd }}', '{{ dot }}'],
-            [file_get_contents(__DIR__ . '/js/asd.js'), $escapedDot],
-            $easeHtml
-        );
+        $this->content = str_replace('{{ dot }}', $escapedDot, $easeHtml);
     }
 
     /** @param array<string, AbstractDescriptor> $semantics */
