@@ -17,28 +17,8 @@ final class MdToHtml
 <head>
     <title>{$title}</title>
     <meta charset="UTF-8">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/github-markdown-css/3.0.1/github-markdown.min.css">
-    <style>
-        .markdown-body {
-            box-sizing: border-box;
-            min-width: 200px;
-            max-width: 980px;
-            margin: 0 auto;
-            padding: 25px;
-        }
-    
-        @media (max-width: 767px) {
-            .markdown-body {
-                padding: 15px;
-            }
-        }
-        .asd-view-selector {
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            gap: 10px;
-        }
-    </style>
+    <link rel="stylesheet" type="text/css" href="https://cdnjs.cloudflare.com/ajax/libs/github-markdown-css/3.0.1/github-markdown.min.css">
+    <link rel="stylesheet" type="text/css" href="https://alps-asd.github.io/app-state-diagram/assets/css/main.css">
 </head>
 <body>
     <div class="markdown-body">

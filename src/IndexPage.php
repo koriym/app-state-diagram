@@ -30,14 +30,11 @@ final class IndexPage
     public function __construct(Config $config)
     {
         [$profile, $dotId, $dotName, $mode, $alpsProfile, $semanticMd, $linkRelations, $ext, $tags, $htmlTitle, $htmlDoc, $setUpTagEvents] = $this->getDataFromConfig($config);
-        $indexJsFile = dirname(__DIR__, 1) . '/docs/assets/js/asd@0.1.0.js';
-        $indexJs = sprintf('<script>%s</script>', file_get_contents($indexJsFile));
         $header = <<<EOT
 <script src="https://d3js.org/d3.v5.min.js"></script>
 <script src="https://unpkg.com/viz.js@1.8.1/viz.js" type="javascript/worker"></script>
 <script src="https://unpkg.com/d3-graphviz@2.1.0/build/d3-graphviz.min.js"></script>
-<script src="https://alps-asd.github.io/app-state-diagram/assets/js/table.js"></script>
-{$indexJs}
+<script src="https://alps-asd.github.io/app-state-diagram/assets/js/asd@0.1.0.js"></script>
 EOT;
         $asd = $config->outputMode === DumpDocs::MODE_MARKDOWN ? '[<img src="profile.svg">](profile.title.svg)' : <<< EOTJS
 <div id="asd-graph-id" style="text-align: center; "></div>
