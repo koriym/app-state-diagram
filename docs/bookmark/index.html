@@ -1,0 +1,932 @@
+<html lang="en">
+<head>
+    <title>本棚</title>
+    <meta charset="UTF-8">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/github-markdown-css/3.0.1/github-markdown.min.css">
+    <style>
+        .markdown-body {
+            box-sizing: border-box;
+            min-width: 200px;
+            max-width: 980px;
+            margin: 0 auto;
+            padding: 25px;
+        }
+    
+        @media (max-width: 767px) {
+            .markdown-body {
+                padding: 15px;
+            }
+        }
+        .asd-view-selector {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 10px;
+        }
+    </style>
+<script src="https://d3js.org/d3.v5.min.js"></script>
+<script src="https://unpkg.com/viz.js@1.8.1/viz.js" type="javascript/worker"></script>
+<script src="https://unpkg.com/d3-graphviz@2.1.0/build/d3-graphviz.min.js"></script>
+<script src="https://alps-asd.github.io/app-state-diagram/assets/js/table.js"></script>
+<script>// Applies smooth scroll to links
+const ease = (t, b, c, d) => {
+    t /= d / 2;
+    if (t < 1) return (c / 2) * t * t + b;
+    t--;
+    return (-c / 2) * (t * (t - 2) - 1) + b;
+};
+
+// Smoothly scrolls to the target element
+const smoothScrollTo = (targetElement) => {
+    const targetPosition = targetElement.getBoundingClientRect().top + window.pageYOffset;
+    const startPosition = window.pageYOffset;
+    const distance = targetPosition - startPosition;
+    const duration = 1000;
+    let startTime = null;
+
+    const animate = (currentTime) => {
+        if (!startTime) startTime = currentTime;
+        const timeElapsed = currentTime - startTime;
+        const run = ease(timeElapsed, startPosition, distance, duration);
+        window.scrollTo(0, run);
+        if (timeElapsed < duration) requestAnimationFrame(animate);
+    };
+
+    requestAnimationFrame(animate);
+    history.pushState(null, null, '#' + targetElement.getAttribute('name'));
+};
+
+const applySmoothScrollToLinks = (links) => {
+    links.forEach(link => {
+        link.addEventListener('click', (e) => {
+            e.preventDefault();
+            const targetName = link.getAttribute('href').slice(1);
+            const targetElement = document.querySelector(`[id="${targetName}"]`);
+            if (!targetElement) {
+                console.error("Target element not found for link:", link.getAttribute('href'));
+                return;
+            }
+            smoothScrollTo(targetElement);
+        });
+    });
+};
+
+
+// Renders the graph and applies smooth scroll to links
+const renderGraph = (graphId, dotString) => {
+    const graphviz = d3.select(graphId).graphviz();
+    graphviz.renderDot(dotString).on('end', () => {
+        applySmoothScrollToLinks(document.querySelectorAll('svg a[*|href^="#"]'));
+    });
+};
+
+// Sets up event listeners for tags
+const setupTagEventListener = (eventName, titles, color, defaultColor = 'lightgrey', defaultEdgeColor = 'black') => {
+    const changeColor = (useDefault) => {
+        titles.forEach(title => {
+            changeColorByTitle(title, useDefault ? defaultColor : color, useDefault ? defaultEdgeColor : color);
+        });
+    };
+
+    document.addEventListener(`tagon-${eventName}`, () => changeColor(false));
+    document.addEventListener(`tagoff-${eventName}`, () => changeColor(true));
+};
+
+// Sets up triggers for tags
+const setupTagTrigger = () => {
+    const checkboxes = document.querySelectorAll('.tag-trigger-checkbox');
+    checkboxes.forEach(checkbox => {
+        checkbox.addEventListener('change', function () {
+            this.checked ?
+                document.dispatchEvent(new CustomEvent('tagon-' + this.getAttribute('data-tag'))) :
+                document.dispatchEvent(new CustomEvent('tagoff-' + this.getAttribute('data-tag')));
+        });
+    });
+};
+
+// Changes color of elements by title or class
+const changeColorByTitle = (titleOrClass, newNodeColor, newEdgeColor) => {
+    const elements = Array.from(document.getElementsByTagName('g'));
+
+    elements.forEach(element => {
+        const titleElement = element.getElementsByTagName('title')[0];
+        const title = titleElement ? titleElement.textContent : '';
+
+        if (title === titleOrClass || element.classList.contains(titleOrClass)) {
+            const polygons = Array.from(element.getElementsByTagName('polygon'));
+            const paths = Array.from(element.getElementsByTagName('path'));
+
+            polygons.forEach(polygon => {
+                polygon.setAttribute('fill', newNodeColor);
+            });
+
+            paths.forEach(path => {
+                path.setAttribute('stroke', newEdgeColor);
+            });
+        }
+    });
+};
+
+// Sets up mode switch for graph display
+const setupModeSwitch = (switchId, graphId, otherGraphId) => {
+    document.getElementById(switchId).addEventListener('change', (e) => {
+        document.getElementById(graphId).style.display = e.target.checked ? 'block' : 'none';
+        document.getElementById(otherGraphId).style.display = e.target.checked ? 'none' : 'block';
+    });
+};
+</script></head>
+<body>
+    <div class="markdown-body">
+        <h1>本棚</h1>
+
+<!-- Container for the ASDs -->
+
+<div id="asd-graph-id" style="text-align: center; "></div>
+
+<div id="asd-graph-name" style="text-align: center; display: none;"></div>
+
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        renderGraph("#asd-graph-id", 'digraph application_state_diagram {  graph [    labelloc="t";    fontname="Helvetica"    label="本棚";    URL="index.html" target="_parent"  ];  node [shape = box, style = "bold,filled" fillcolor="lightgray"];    BookDetail [margin=0.02, label=<<table cellspacing="0" cellpadding="5" border="0"><tr><td>BookDetail<br />(book)<br /></td></tr></table>>,shape=box URL="#BookDetail" target="_parent"]    History [margin=0.02, label=<<table cellspacing="0" cellpadding="5" border="0"><tr><td>History<br />(bookList)<br /></td></tr></table>>,shape=box URL="#History" target="_parent"]    MyBookshelf [margin=0.02, label=<<table cellspacing="0" cellpadding="5" border="0"><tr><td>MyBookshelf<br />(bookshelfItem)<br />(books)<br /></td></tr></table>>,shape=box URL="#MyBookshelf" target="_parent"]    SearchResult [margin=0.02, label=<<table cellspacing="0" cellpadding="5" border="0"><tr><td>SearchResult<br />(bookList)<br /></td></tr></table>>,shape=box URL="#SearchResult" target="_parent"]    TopPage [margin=0.02, label=<<table cellspacing="0" cellpadding="5" border="0"><tr><td>TopPage<br />(bookList)<br /></td></tr></table>>,shape=box URL="#TopPage" target="_parent"]    Viewer [margin=0.02, label=<<table cellspacing="0" cellpadding="5" border="0"><tr><td>Viewer<br />(book)<br /></td></tr></table>>,shape=box URL="#Viewer" target="_parent"]    AddBook -> MyBookshelf [label = <doAddBook (unsafe)> URL="#doAddBook" target="_parent" fontsize=13 class="doAddBook" penwidth=1.5];    BookDetail -> AddBook [label = <goAddBook (safe)> URL="#goAddBook" target="_parent" fontsize=13 class="goAddBook" penwidth=1.5];    BookDetail -> RemoveBook [label = <goRemoveBook (safe)> URL="#goRemoveBook" target="_parent" fontsize=13 class="goRemoveBook" penwidth=1.5];    MyBookshelf -> History [label = <goHistory (safe)> URL="#goHistory" target="_parent" fontsize=13 class="goHistory" penwidth=1.5];    MyBookshelf -> RemoveBook [label = <goRemoveBook (safe)> URL="#goRemoveBook" target="_parent" fontsize=13 class="goRemoveBook" penwidth=1.5];    MyBookshelf -> Viewer [label = <goViewer (safe)> URL="#goViewer" target="_parent" fontsize=13 class="goViewer" penwidth=1.5];    RemoveBook -> MyBookshelf [label = <doRemoveBook (idempotent)> URL="#doRemoveBook" target="_parent" fontsize=13 class="doRemoveBook" penwidth=1.5];    SearchResult -> AddBook [label = <goAddBook (safe)> URL="#goAddBook" target="_parent" fontsize=13 class="goAddBook" penwidth=1.5];    SearchResult -> RemoveBook [label = <goRemoveBook (safe)> URL="#goRemoveBook" target="_parent" fontsize=13 class="goRemoveBook" penwidth=1.5];    TopPage -> History [label = <goHistory (safe)> URL="#goHistory" target="_parent" fontsize=13 class="goHistory" penwidth=1.5];    TopPage -> MyBookshelf [label = <goMyBookshelf (safe)> URL="#goMyBookshelf" target="_parent" fontsize=13 class="goMyBookshelf" penwidth=1.5];    Viewer -> AddBook [label = <goAddBook (safe)> URL="#goAddBook" target="_parent" fontsize=13 class="goAddBook" penwidth=1.5];    Viewer -> RemoveBook [label = <goRemoveBook (safe)> URL="#goRemoveBook" target="_parent" fontsize=13 class="goRemoveBook" penwidth=1.5];    AddBook [label = <AddBook> URL="#AddBook" target="_parent"]    RemoveBook [label = <RemoveBook> URL="#RemoveBook" target="_parent"]}');
+        renderGraph("#asd-graph-name", 'digraph application_state_diagram {  graph [    labelloc="t";    fontname="Helvetica"    label="本棚";    URL="index.html" target="_parent"  ];  node [shape = box, style = "bold,filled" fillcolor="lightgray"];    BookDetail [margin=0.02, label=<<table cellspacing="0" cellpadding="5" border="0"><tr><td>書籍詳細<br />(書籍)<br /></td></tr></table>>,shape=box URL="#BookDetail" target="_parent"]    History [margin=0.02, label=<<table cellspacing="0" cellpadding="5" border="0"><tr><td>閲覧履歴<br />(書籍のリスト)<br /></td></tr></table>>,shape=box URL="#History" target="_parent"]    MyBookshelf [margin=0.02, label=<<table cellspacing="0" cellpadding="5" border="0"><tr><td>マイ本棚<br />(本棚)<br />(蔵書)<br /></td></tr></table>>,shape=box URL="#MyBookshelf" target="_parent"]    SearchResult [margin=0.02, label=<<table cellspacing="0" cellpadding="5" border="0"><tr><td>検索結果<br />(書籍のリスト)<br /></td></tr></table>>,shape=box URL="#SearchResult" target="_parent"]    TopPage [margin=0.02, label=<<table cellspacing="0" cellpadding="5" border="0"><tr><td>トップ<br />(書籍のリスト)<br /></td></tr></table>>,shape=box URL="#TopPage" target="_parent"]    Viewer [margin=0.02, label=<<table cellspacing="0" cellpadding="5" border="0"><tr><td>ビューワー<br />(書籍)<br /></td></tr></table>>,shape=box URL="#Viewer" target="_parent"]    AddBook -> MyBookshelf [label = <<b><u>書籍を追加する</u></b>> URL="#doAddBook" target="_parent" fontsize=13 class="doAddBook" penwidth=1.5];    BookDetail -> AddBook [label = <書籍の追加へ> URL="#goAddBook" target="_parent" fontsize=13 class="goAddBook" penwidth=1.5];    BookDetail -> RemoveBook [label = <書籍の削除へ> URL="#goRemoveBook" target="_parent" fontsize=13 class="goRemoveBook" penwidth=1.5];    MyBookshelf -> History [label = <閲覧履歴を見る> URL="#goHistory" target="_parent" fontsize=13 class="goHistory" penwidth=1.5];    MyBookshelf -> RemoveBook [label = <書籍の削除へ> URL="#goRemoveBook" target="_parent" fontsize=13 class="goRemoveBook" penwidth=1.5];    MyBookshelf -> Viewer [label = <ビューワーを開く> URL="#goViewer" target="_parent" fontsize=13 class="goViewer" penwidth=1.5];    RemoveBook -> MyBookshelf [label = <<u>書籍を削除する</u>> URL="#doRemoveBook" target="_parent" fontsize=13 class="doRemoveBook" penwidth=1.5];    SearchResult -> AddBook [label = <書籍の追加へ> URL="#goAddBook" target="_parent" fontsize=13 class="goAddBook" penwidth=1.5];    SearchResult -> RemoveBook [label = <書籍の削除へ> URL="#goRemoveBook" target="_parent" fontsize=13 class="goRemoveBook" penwidth=1.5];    TopPage -> History [label = <閲覧履歴を見る> URL="#goHistory" target="_parent" fontsize=13 class="goHistory" penwidth=1.5];    TopPage -> MyBookshelf [label = <マイ本棚へ> URL="#goMyBookshelf" target="_parent" fontsize=13 class="goMyBookshelf" penwidth=1.5];    Viewer -> AddBook [label = <書籍の追加へ> URL="#goAddBook" target="_parent" fontsize=13 class="goAddBook" penwidth=1.5];    Viewer -> RemoveBook [label = <書籍の削除へ> URL="#goRemoveBook" target="_parent" fontsize=13 class="goRemoveBook" penwidth=1.5];    AddBook [label = <書籍の追加（モーダル）> URL="#AddBook" target="_parent"]    RemoveBook [label = <書籍の削除（モーダル）> URL="#RemoveBook" target="_parent"]}');
+        setupTagTrigger();
+        setupModeSwitch('asd-show-id', 'asd-graph-id', 'asd-graph-name');
+        setupModeSwitch('asd-show-name', 'asd-graph-name', 'asd-graph-id');
+        applySmoothScrollToLinks(document.querySelectorAll('a[href^="#"]'));
+        setupTagEventListener('add', ['AddBook', 'MyBookshelf', 'SearchResult'], 'LightGreen'); setupTagEventListener('delete', ['MyBookshelf', 'RemoveBook', 'TopPage', 'Viewer', 'goMyBookshelf', 'goViewer'], 'SkyBlue'); 
+    });
+</script>
+
+<div class="asd-view-selector">
+    <input type="radio" id="asd-show-id" checked name="asd-view-selector">
+    <label for="asd-show-id">id<ID/label>
+    <input type="radio" id="asd-show-name" name="asd-view-selector">
+    <label for="asd-show-name">title</label>
+</div>
+
+<h2>Tags</h2>
+
+<ul>
+<li><input type="checkbox" id="tag-add" class="tag-trigger-checkbox" data-tag="add" name="tag-add"><label for="tag-add"> add</label></li>
+<li><input type="checkbox" id="tag-delete" class="tag-trigger-checkbox" data-tag="delete" name="tag-delete"><label for="tag-delete"> delete</label></li>
+</ul>
+
+<h2>Semantic Descriptors</h2>
+
+<h3><a id="AddBook">AddBook</a></h3>
+
+<ul>
+<li>type: semantic</li>
+<li>title: 書籍の追加（モーダル）</li>
+<li>tag: <a href="#tag-add">add</a></li>
+<li>descriptor</li>
+</ul>
+
+<table>
+<thead>
+<tr>
+  <th>id</th>
+  <th>type</th>
+  <th>title</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+  <td><a href="#doAddBook">doAddBook</a></td>
+  <td>unsafe</td>
+  <td>書籍を追加する</td>
+</tr>
+</tbody>
+</table>
+
+<h3><a id="addedAt">addedAt</a></h3>
+
+<ul>
+<li>type: semantic</li>
+<li>title: 追加日時</li>
+</ul>
+
+<h3><a id="authors">authors</a></h3>
+
+<ul>
+<li>type: semantic</li>
+<li>title: 編著者</li>
+</ul>
+
+<h3><a id="book">book</a></h3>
+
+<ul>
+<li>type: semantic</li>
+<li>title: 書籍</li>
+<li>descriptor</li>
+</ul>
+
+<table>
+<thead>
+<tr>
+  <th>id</th>
+  <th>type</th>
+  <th>title</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+  <td><a href="#content_id">content_id</a></td>
+  <td>semantic</td>
+  <td>cid</td>
+</tr>
+<tr>
+  <td><a href="#title">title</a></td>
+  <td>semantic</td>
+  <td>書籍名</td>
+</tr>
+<tr>
+  <td><a href="#releasedAt">releasedAt</a></td>
+  <td>semantic</td>
+  <td>発売日</td>
+</tr>
+<tr>
+  <td><a href="#publisher">publisher</a></td>
+  <td>semantic</td>
+  <td>出版社</td>
+</tr>
+<tr>
+  <td><a href="#authors">authors</a></td>
+  <td>semantic</td>
+  <td>編著者</td>
+</tr>
+<tr>
+  <td><a href="#thumbnail_url">thumbnail_url</a></td>
+  <td>semantic</td>
+  <td>サムネイルURL</td>
+</tr>
+<tr>
+  <td><a href="#reader_url">reader_url</a></td>
+  <td>semantic</td>
+  <td>リーダーURL</td>
+</tr>
+<tr>
+  <td><a href="#addedAt">addedAt</a></td>
+  <td>semantic</td>
+  <td>追加日時</td>
+</tr>
+</tbody>
+</table>
+
+<h3><a id="book_count">book_count</a></h3>
+
+<ul>
+<li>type: semantic</li>
+<li>title: 蔵書数</li>
+</ul>
+
+<h3><a id="BookDetail">BookDetail</a></h3>
+
+<ul>
+<li>type: semantic</li>
+<li>title: 書籍詳細</li>
+<li>descriptor</li>
+</ul>
+
+<table>
+<thead>
+<tr>
+  <th>id</th>
+  <th>type</th>
+  <th>title</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+  <td><a href="#book">book</a></td>
+  <td>semantic</td>
+  <td>書籍</td>
+</tr>
+<tr>
+  <td><a href="#goAddBook">goAddBook</a></td>
+  <td>safe</td>
+  <td>書籍の追加へ</td>
+</tr>
+<tr>
+  <td><a href="#goRemoveBook">goRemoveBook</a></td>
+  <td>safe</td>
+  <td>書籍の削除へ</td>
+</tr>
+</tbody>
+</table>
+
+<h3><a id="bookList">bookList</a></h3>
+
+<ul>
+<li>type: semantic</li>
+<li>title: 書籍のリスト</li>
+<li>descriptor</li>
+</ul>
+
+<table>
+<thead>
+<tr>
+  <th>id</th>
+  <th>type</th>
+  <th>title</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+  <td><a href="#book">book</a></td>
+  <td>semantic</td>
+  <td>書籍</td>
+</tr>
+</tbody>
+</table>
+
+<h3><a id="books">books</a></h3>
+
+<ul>
+<li>type: semantic</li>
+<li>title: 蔵書</li>
+<li>descriptor</li>
+</ul>
+
+<table>
+<thead>
+<tr>
+  <th>id</th>
+  <th>type</th>
+  <th>title</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+  <td><a href="#book">book</a></td>
+  <td>semantic</td>
+  <td>書籍</td>
+</tr>
+<tr>
+  <td><a href="#book_count">book_count</a></td>
+  <td>semantic</td>
+  <td>蔵書数</td>
+</tr>
+</tbody>
+</table>
+
+<h3><a id="bookshelf_id">bookshelf_id</a></h3>
+
+<ul>
+<li>type: semantic</li>
+<li>title: 本棚ID</li>
+</ul>
+
+<h3><a id="bookshelfItem">bookshelfItem</a></h3>
+
+<ul>
+<li>type: semantic</li>
+<li>title: 本棚</li>
+<li>descriptor</li>
+</ul>
+
+<table>
+<thead>
+<tr>
+  <th>id</th>
+  <th>type</th>
+  <th>title</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+  <td><a href="#name">name</a></td>
+  <td>semantic</td>
+  <td>名前</td>
+</tr>
+<tr>
+  <td><a href="#description">description</a></td>
+  <td>semantic</td>
+  <td>説明</td>
+</tr>
+<tr>
+  <td><a href="#books">books</a></td>
+  <td>semantic</td>
+  <td>蔵書</td>
+</tr>
+</tbody>
+</table>
+
+<h3><a id="content_id">content_id</a></h3>
+
+<ul>
+<li>type: semantic</li>
+<li>title: cid</li>
+</ul>
+
+<h3><a id="description">description</a></h3>
+
+<ul>
+<li>type: semantic</li>
+<li>title: 説明</li>
+</ul>
+
+<h3><a id="doAddBook">doAddBook</a></h3>
+
+<ul>
+<li>type: unsafe</li>
+<li>title: 書籍を追加する</li>
+<li>rt: <a href="#MyBookshelf">MyBookshelf</a></li>
+<li>descriptor</li>
+</ul>
+
+<table>
+<thead>
+<tr>
+  <th>id</th>
+  <th>type</th>
+  <th>title</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+  <td><a href="#bookshelf_id">bookshelf_id</a></td>
+  <td>semantic</td>
+  <td>本棚ID</td>
+</tr>
+<tr>
+  <td><a href="#content_id">content_id</a></td>
+  <td>semantic</td>
+  <td>cid</td>
+</tr>
+</tbody>
+</table>
+
+<h3><a id="doRemoveBook">doRemoveBook</a></h3>
+
+<ul>
+<li>type: idempotent</li>
+<li>title: 書籍を削除する</li>
+<li>rt: <a href="#MyBookshelf">MyBookshelf</a></li>
+<li>descriptor</li>
+</ul>
+
+<table>
+<thead>
+<tr>
+  <th>id</th>
+  <th>type</th>
+  <th>title</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+  <td><a href="#bookshelf_id">bookshelf_id</a></td>
+  <td>semantic</td>
+  <td>本棚ID</td>
+</tr>
+<tr>
+  <td><a href="#content_id">content_id</a></td>
+  <td>semantic</td>
+  <td>cid</td>
+</tr>
+</tbody>
+</table>
+
+<h3><a id="goAddBook">goAddBook</a></h3>
+
+<ul>
+<li>type: safe</li>
+<li>title: 書籍の追加へ</li>
+<li>rt: <a href="#AddBook">AddBook</a></li>
+</ul>
+
+<h3><a id="goHistory">goHistory</a></h3>
+
+<ul>
+<li>type: safe</li>
+<li>title: 閲覧履歴を見る</li>
+<li>rt: <a href="#History">History</a></li>
+</ul>
+
+<h3><a id="goMyBookshelf">goMyBookshelf</a></h3>
+
+<ul>
+<li>type: safe</li>
+<li>title: マイ本棚へ</li>
+<li>tag: <a href="#tag-delete">delete</a></li>
+<li>rt: <a href="#MyBookshelf">MyBookshelf</a></li>
+</ul>
+
+<h3><a id="goRemoveBook">goRemoveBook</a></h3>
+
+<ul>
+<li>type: safe</li>
+<li>title: 書籍の削除へ</li>
+<li>rt: <a href="#RemoveBook">RemoveBook</a></li>
+</ul>
+
+<h3><a id="goViewer">goViewer</a></h3>
+
+<ul>
+<li>type: safe</li>
+<li>title: ビューワーを開く</li>
+<li>tag: <a href="#tag-delete">delete</a></li>
+<li>rt: <a href="#Viewer">Viewer</a></li>
+<li>descriptor</li>
+</ul>
+
+<table>
+<thead>
+<tr>
+  <th>id</th>
+  <th>type</th>
+  <th>title</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+  <td><a href="#content_id">content_id</a></td>
+  <td>semantic</td>
+  <td>cid</td>
+</tr>
+</tbody>
+</table>
+
+<h3><a id="History">History</a></h3>
+
+<ul>
+<li>type: semantic</li>
+<li>title: 閲覧履歴</li>
+<li>descriptor</li>
+</ul>
+
+<table>
+<thead>
+<tr>
+  <th>id</th>
+  <th>type</th>
+  <th>title</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+  <td><a href="#bookList">bookList</a></td>
+  <td>semantic</td>
+  <td>書籍のリスト</td>
+</tr>
+</tbody>
+</table>
+
+<h3><a id="hold">hold</a></h3>
+
+<ul>
+<li>type: semantic</li>
+<li>title: 所蔵する</li>
+</ul>
+
+<h3><a id="max_count">max_count</a></h3>
+
+<ul>
+<li>type: semantic</li>
+<li>title: 蔵書数上限</li>
+</ul>
+
+<h3><a id="MyBookshelf">MyBookshelf</a></h3>
+
+<ul>
+<li>type: semantic</li>
+<li>title: マイ本棚</li>
+<li>tag: <a href="#tag-delete">delete</a>, <a href="#tag-add">add</a></li>
+<li>descriptor</li>
+</ul>
+
+<table>
+<thead>
+<tr>
+  <th>id</th>
+  <th>type</th>
+  <th>title</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+  <td><a href="#bookshelfItem">bookshelfItem</a></td>
+  <td>semantic</td>
+  <td>本棚</td>
+</tr>
+<tr>
+  <td><a href="#books">books</a></td>
+  <td>semantic</td>
+  <td>蔵書</td>
+</tr>
+<tr>
+  <td><a href="#goRemoveBook">goRemoveBook</a></td>
+  <td>safe</td>
+  <td>書籍の削除へ</td>
+</tr>
+<tr>
+  <td><a href="#goHistory">goHistory</a></td>
+  <td>safe</td>
+  <td>閲覧履歴を見る</td>
+</tr>
+<tr>
+  <td><a href="#goViewer">goViewer</a></td>
+  <td>safe</td>
+  <td>ビューワーを開く</td>
+</tr>
+</tbody>
+</table>
+
+<h3><a id="name">name</a></h3>
+
+<ul>
+<li>type: semantic</li>
+<li>title: 名前</li>
+</ul>
+
+<h3><a id="publisher">publisher</a></h3>
+
+<ul>
+<li>type: semantic</li>
+<li>title: 出版社</li>
+</ul>
+
+<h3><a id="reader_url">reader_url</a></h3>
+
+<ul>
+<li>type: semantic</li>
+<li>title: リーダーURL</li>
+</ul>
+
+<h3><a id="releasedAt">releasedAt</a></h3>
+
+<ul>
+<li>type: semantic</li>
+<li>title: 発売日</li>
+</ul>
+
+<h3><a id="RemoveBook">RemoveBook</a></h3>
+
+<ul>
+<li>type: semantic</li>
+<li>title: 書籍の削除（モーダル）</li>
+<li>tag: <a href="#tag-delete">delete</a></li>
+<li>descriptor</li>
+</ul>
+
+<table>
+<thead>
+<tr>
+  <th>id</th>
+  <th>type</th>
+  <th>title</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+  <td><a href="#doRemoveBook">doRemoveBook</a></td>
+  <td>idempotent</td>
+  <td>書籍を削除する</td>
+</tr>
+</tbody>
+</table>
+
+<h3><a id="SearchResult">SearchResult</a></h3>
+
+<ul>
+<li>type: semantic</li>
+<li>title: 検索結果</li>
+<li>tag: <a href="#tag-add">add</a></li>
+<li>descriptor</li>
+</ul>
+
+<table>
+<thead>
+<tr>
+  <th>id</th>
+  <th>type</th>
+  <th>title</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+  <td><a href="#bookList">bookList</a></td>
+  <td>semantic</td>
+  <td>書籍のリスト</td>
+</tr>
+<tr>
+  <td><a href="#goAddBook">goAddBook</a></td>
+  <td>safe</td>
+  <td>書籍の追加へ</td>
+</tr>
+<tr>
+  <td><a href="#goRemoveBook">goRemoveBook</a></td>
+  <td>safe</td>
+  <td>書籍の削除へ</td>
+</tr>
+</tbody>
+</table>
+
+<h3><a id="thumbnail_url">thumbnail_url</a></h3>
+
+<ul>
+<li>type: semantic</li>
+<li>title: サムネイルURL</li>
+</ul>
+
+<h3><a id="title">title</a></h3>
+
+<ul>
+<li>type: semantic</li>
+<li>title: 書籍名</li>
+</ul>
+
+<h3><a id="TopPage">TopPage</a></h3>
+
+<ul>
+<li>type: semantic</li>
+<li>title: トップ</li>
+<li>tag: <a href="#tag-delete">delete</a></li>
+<li>descriptor</li>
+</ul>
+
+<table>
+<thead>
+<tr>
+  <th>id</th>
+  <th>type</th>
+  <th>title</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+  <td><a href="#bookList">bookList</a></td>
+  <td>semantic</td>
+  <td>書籍のリスト</td>
+</tr>
+<tr>
+  <td><a href="#goMyBookshelf">goMyBookshelf</a></td>
+  <td>safe</td>
+  <td>マイ本棚へ</td>
+</tr>
+<tr>
+  <td><a href="#goHistory">goHistory</a></td>
+  <td>safe</td>
+  <td>閲覧履歴を見る</td>
+</tr>
+</tbody>
+</table>
+
+<h3><a id="Viewer">Viewer</a></h3>
+
+<ul>
+<li>type: semantic</li>
+<li>title: ビューワー</li>
+<li>tag: <a href="#tag-delete">delete</a></li>
+<li>descriptor</li>
+</ul>
+
+<table>
+<thead>
+<tr>
+  <th>id</th>
+  <th>type</th>
+  <th>title</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+  <td><a href="#book">book</a></td>
+  <td>semantic</td>
+  <td>書籍</td>
+</tr>
+<tr>
+  <td><a href="#goRemoveBook">goRemoveBook</a></td>
+  <td>safe</td>
+  <td>書籍の削除へ</td>
+</tr>
+<tr>
+  <td><a href="#goAddBook">goAddBook</a></td>
+  <td>safe</td>
+  <td>書籍の追加へ</td>
+</tr>
+</tbody>
+</table>
+
+<hr />
+
+<h2>Profile</h2>
+
+<pre><code>&lt;?xml version=&quot;1.0&quot; encoding=&quot;UTF-8&quot; ?&gt;
+&lt;alps xmlns:xsi=&quot;http://www.w3.org/2001/XMLSchema-instance&quot;
+      xsi:noNamespaceSchemaLocation=&quot;https://alps-io.github.io/schemas/alps.xsd&quot;&gt;
+    &lt;title&gt;本棚&lt;/title&gt;
+
+    &lt;!--  Ontology  --&gt;
+    &lt;!--  書籍  --&gt;
+    &lt;descriptor id=&quot;content_id&quot; title=&quot;cid&quot; /&gt;
+    &lt;descriptor id=&quot;title&quot; title=&quot;書籍名&quot; /&gt;
+    &lt;descriptor id=&quot;releasedAt&quot; title=&quot;発売日&quot; /&gt;
+    &lt;descriptor id=&quot;publisher&quot; title=&quot;出版社&quot; /&gt;
+    &lt;descriptor id=&quot;authors&quot; title=&quot;編著者&quot; /&gt;
+    &lt;descriptor id=&quot;thumbnail_url&quot; title=&quot;サムネイルURL&quot; /&gt;
+    &lt;descriptor id=&quot;reader_url&quot; title=&quot;リーダーURL&quot; /&gt;
+    &lt;descriptor id=&quot;addedAt&quot; title=&quot;追加日時&quot; /&gt;
+    &lt;!--  本棚  --&gt;
+    &lt;descriptor id=&quot;bookshelf_id&quot; title=&quot;本棚ID&quot; /&gt;
+    &lt;descriptor id=&quot;name&quot; title=&quot;名前&quot; /&gt;
+    &lt;descriptor id=&quot;description&quot; title=&quot;説明&quot; /&gt;
+    &lt;descriptor id=&quot;hold&quot; title=&quot;所蔵する&quot;&gt;
+        &lt;doc&gt;任意の書籍が蔵書にある&lt;/doc&gt;
+    &lt;/descriptor&gt;
+    &lt;descriptor id=&quot;book_count&quot; title=&quot;蔵書数&quot;&gt;
+        &lt;doc&gt;本棚が所蔵する書籍の冊数&lt;/doc&gt;
+    &lt;/descriptor&gt;
+    &lt;descriptor id=&quot;max_count&quot; title=&quot;蔵書数上限&quot;&gt;
+        &lt;doc&gt;本棚が保持可能な蔵書数の上限値&lt;/doc&gt;
+    &lt;/descriptor&gt;
+
+    &lt;!--  Ontologyグループ  --&gt;
+    &lt;descriptor id=&quot;book&quot; title=&quot;書籍&quot;&gt;
+        &lt;doc&gt;BinBでデータを持っている書籍（非公開になったものも含む）&lt;/doc&gt;
+        &lt;descriptor href=&quot;#content_id&quot; /&gt;
+        &lt;descriptor href=&quot;#title&quot; /&gt;
+        &lt;descriptor href=&quot;#releasedAt&quot; /&gt;
+        &lt;descriptor href=&quot;#publisher&quot; /&gt;
+        &lt;descriptor href=&quot;#authors&quot; /&gt;
+        &lt;descriptor href=&quot;#thumbnail_url&quot; /&gt;
+        &lt;descriptor href=&quot;#reader_url&quot; /&gt;
+        &lt;descriptor href=&quot;#addedAt&quot; /&gt;
+    &lt;/descriptor&gt;
+    &lt;descriptor id=&quot;bookList&quot; title=&quot;書籍のリスト&quot;&gt;
+        &lt;descriptor href=&quot;#book&quot; /&gt;
+    &lt;/descriptor&gt;
+    &lt;descriptor id=&quot;books&quot; title=&quot;蔵書&quot;&gt;
+        &lt;descriptor href=&quot;#book&quot; /&gt;
+        &lt;descriptor href=&quot;#book_count&quot; /&gt;
+        &lt;doc&gt;本棚に入っている書籍たち。所蔵後に非公開となった書籍も含む。&lt;/doc&gt;
+    &lt;/descriptor&gt;
+    &lt;descriptor id=&quot;bookshelfItem&quot; title=&quot;本棚&quot;&gt;
+        &lt;doc&gt;任意の書籍を保持しておく入れ物の概念。書籍を内包する。ログインしていないと利用不可。&lt;/doc&gt;
+        &lt;descriptor href=&quot;#name&quot; /&gt;
+        &lt;descriptor href=&quot;#description&quot; /&gt;
+        &lt;descriptor href=&quot;#books&quot; /&gt;
+    &lt;/descriptor&gt;
+
+    &lt;!--  Taxonomy  --&gt;
+    &lt;descriptor id=&quot;AddBook&quot; title=&quot;書籍の追加（モーダル）&quot; tag=&quot;add&quot;&gt;
+        &lt;descriptor href=&quot;#doAddBook&quot; /&gt;
+    &lt;/descriptor&gt;
+    &lt;descriptor id=&quot;RemoveBook&quot; title=&quot;書籍の削除（モーダル）&quot; tag=&quot;delete&quot;&gt;
+        &lt;descriptor href=&quot;#doRemoveBook&quot; /&gt;
+    &lt;/descriptor&gt;
+    &lt;descriptor id=&quot;TopPage&quot; title=&quot;トップ&quot; tag=&quot;delete&quot;&gt;
+        &lt;descriptor href=&quot;#bookList&quot; /&gt;
+        &lt;descriptor href=&quot;#goMyBookshelf&quot; /&gt;
+        &lt;descriptor href=&quot;#goHistory&quot; /&gt;
+    &lt;/descriptor&gt;
+    &lt;descriptor id=&quot;BookDetail&quot; title=&quot;書籍詳細&quot;&gt;
+        &lt;descriptor href=&quot;#book&quot; /&gt;
+        &lt;descriptor href=&quot;#goAddBook&quot; /&gt;
+        &lt;descriptor href=&quot;#goRemoveBook&quot; /&gt;
+    &lt;/descriptor&gt;
+    &lt;descriptor id=&quot;SearchResult&quot; title=&quot;検索結果&quot; tag=&quot;add&quot;&gt;
+        &lt;descriptor href=&quot;#bookList&quot; /&gt;
+        &lt;descriptor href=&quot;#goAddBook&quot; /&gt;
+        &lt;descriptor href=&quot;#goRemoveBook&quot; /&gt;
+    &lt;/descriptor&gt;
+    &lt;descriptor id=&quot;History&quot; title=&quot;閲覧履歴&quot;&gt;
+        &lt;descriptor href=&quot;#bookList&quot; /&gt;
+    &lt;/descriptor&gt;
+    &lt;descriptor id=&quot;MyBookshelf&quot; title=&quot;マイ本棚&quot; tag=&quot;delete add&quot;&gt;
+        &lt;descriptor href=&quot;#bookshelfItem&quot; /&gt;
+        &lt;descriptor href=&quot;#books&quot; /&gt;
+        &lt;descriptor href=&quot;#goRemoveBook&quot; /&gt;
+        &lt;descriptor href=&quot;#goHistory&quot; /&gt;
+        &lt;descriptor href=&quot;#goViewer&quot; /&gt;
+    &lt;/descriptor&gt;
+    &lt;descriptor id=&quot;Viewer&quot; title=&quot;ビューワー&quot; tag=&quot;delete&quot;&gt;
+        &lt;descriptor href=&quot;#book&quot; /&gt;
+        &lt;descriptor href=&quot;#goRemoveBook&quot; /&gt;
+        &lt;descriptor href=&quot;#goAddBook&quot; /&gt;
+    &lt;/descriptor&gt;
+
+    &lt;!--  Choreography  --&gt;
+    &lt;descriptor id=&quot;goViewer&quot; title=&quot;ビューワーを開く&quot; type=&quot;safe&quot; rt=&quot;#Viewer&quot; tag=&quot;delete&quot;&gt;
+        &lt;descriptor href=&quot;#content_id&quot; /&gt;
+    &lt;/descriptor&gt;
+    &lt;descriptor id=&quot;goMyBookshelf&quot; title=&quot;マイ本棚へ&quot; type=&quot;safe&quot; rt=&quot;#MyBookshelf&quot; tag=&quot;delete&quot;/&gt;
+    &lt;descriptor id=&quot;goRemoveBook&quot; title=&quot;書籍の削除へ&quot; type=&quot;safe&quot; rt=&quot;#RemoveBook&quot;/&gt;
+    &lt;descriptor id=&quot;doRemoveBook&quot; title=&quot;書籍を削除する&quot; type=&quot;idempotent&quot; rt=&quot;#MyBookshelf&quot;&gt;
+        &lt;descriptor href=&quot;#bookshelf_id&quot; /&gt;
+        &lt;descriptor href=&quot;#content_id&quot; /&gt;
+    &lt;/descriptor&gt;
+    &lt;descriptor id=&quot;goAddBook&quot; title=&quot;書籍の追加へ&quot; type=&quot;safe&quot; rt=&quot;#AddBook&quot; /&gt;
+    &lt;descriptor id=&quot;doAddBook&quot; title=&quot;書籍を追加する&quot; type=&quot;unsafe&quot; rt=&quot;#MyBookshelf&quot;&gt;
+        &lt;descriptor href=&quot;#bookshelf_id&quot; /&gt;
+        &lt;descriptor href=&quot;#content_id&quot; /&gt;
+    &lt;/descriptor&gt;
+    &lt;descriptor id=&quot;goHistory&quot; title=&quot;閲覧履歴を見る&quot; type=&quot;safe&quot; rt=&quot;#History&quot;&gt;
+    &lt;/descriptor&gt;
+&lt;/alps&gt;
+</code></pre>
+
+    </div>
+</body>
+</html>

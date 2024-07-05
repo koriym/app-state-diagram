@@ -1,0 +1,112 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<alps xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+      xsi:noNamespaceSchemaLocation="https://alps-io.github.io/schemas/alps.xsd">
+    <title>本棚</title>
+
+    <!--  Ontology  -->
+    <!--  書籍  -->
+    <descriptor id="content_id" title="cid" />
+    <descriptor id="title" title="書籍名" />
+    <descriptor id="releasedAt" title="発売日" />
+    <descriptor id="publisher" title="出版社" />
+    <descriptor id="authors" title="編著者" />
+    <descriptor id="thumbnail_url" title="サムネイルURL" />
+    <descriptor id="reader_url" title="リーダーURL" />
+    <descriptor id="addedAt" title="追加日時" />
+    <!--  本棚  -->
+    <descriptor id="bookshelf_id" title="本棚ID" />
+    <descriptor id="name" title="名前" />
+    <descriptor id="description" title="説明" />
+    <descriptor id="hold" title="所蔵する">
+        <doc>任意の書籍が蔵書にある</doc>
+    </descriptor>
+    <descriptor id="book_count" title="蔵書数">
+        <doc>本棚が所蔵する書籍の冊数</doc>
+    </descriptor>
+    <descriptor id="max_count" title="蔵書数上限">
+        <doc>本棚が保持可能な蔵書数の上限値</doc>
+    </descriptor>
+
+    <!--  Ontologyグループ  -->
+    <descriptor id="book" title="書籍">
+        <doc>BinBでデータを持っている書籍（非公開になったものも含む）</doc>
+        <descriptor href="#content_id" />
+        <descriptor href="#title" />
+        <descriptor href="#releasedAt" />
+        <descriptor href="#publisher" />
+        <descriptor href="#authors" />
+        <descriptor href="#thumbnail_url" />
+        <descriptor href="#reader_url" />
+        <descriptor href="#addedAt" />
+    </descriptor>
+    <descriptor id="bookList" title="書籍のリスト">
+        <descriptor href="#book" />
+    </descriptor>
+    <descriptor id="books" title="蔵書">
+        <descriptor href="#book" />
+        <descriptor href="#book_count" />
+        <doc>本棚に入っている書籍たち。所蔵後に非公開となった書籍も含む。</doc>
+    </descriptor>
+    <descriptor id="bookshelfItem" title="本棚">
+        <doc>任意の書籍を保持しておく入れ物の概念。書籍を内包する。ログインしていないと利用不可。</doc>
+        <descriptor href="#name" />
+        <descriptor href="#description" />
+        <descriptor href="#books" />
+    </descriptor>
+
+    <!--  Taxonomy  -->
+    <descriptor id="AddBook" title="書籍の追加（モーダル）" tag="add">
+        <descriptor href="#doAddBook" />
+    </descriptor>
+    <descriptor id="RemoveBook" title="書籍の削除（モーダル）" tag="delete">
+        <descriptor href="#doRemoveBook" />
+    </descriptor>
+    <descriptor id="TopPage" title="トップ" tag="delete">
+        <descriptor href="#bookList" />
+        <descriptor href="#goMyBookshelf" />
+        <descriptor href="#goHistory" />
+    </descriptor>
+    <descriptor id="BookDetail" title="書籍詳細">
+        <descriptor href="#book" />
+        <descriptor href="#goAddBook" />
+        <descriptor href="#goRemoveBook" />
+    </descriptor>
+    <descriptor id="SearchResult" title="検索結果" tag="add">
+        <descriptor href="#bookList" />
+        <descriptor href="#goAddBook" />
+        <descriptor href="#goRemoveBook" />
+    </descriptor>
+    <descriptor id="History" title="閲覧履歴">
+        <descriptor href="#bookList" />
+    </descriptor>
+    <descriptor id="MyBookshelf" title="マイ本棚" tag="delete add">
+        <descriptor href="#bookshelfItem" />
+        <descriptor href="#books" />
+        <descriptor href="#goRemoveBook" />
+        <descriptor href="#goHistory" />
+        <descriptor href="#goViewer" />
+    </descriptor>
+    <descriptor id="Viewer" title="ビューワー" tag="delete">
+        <descriptor href="#book" />
+        <descriptor href="#goRemoveBook" />
+        <descriptor href="#goAddBook" />
+    </descriptor>
+
+    <!--  Choreography  -->
+    <descriptor id="goViewer" title="ビューワーを開く" type="safe" rt="#Viewer" tag="delete">
+        <descriptor href="#content_id" />
+    </descriptor>
+    <descriptor id="goMyBookshelf" title="マイ本棚へ" type="safe" rt="#MyBookshelf" tag="delete"/>
+    <descriptor id="goRemoveBook" title="書籍の削除へ" type="safe" rt="#RemoveBook"/>
+    <descriptor id="doRemoveBook" title="書籍を削除する" type="idempotent" rt="#MyBookshelf">
+        <descriptor href="#bookshelf_id" />
+        <descriptor href="#content_id" />
+    </descriptor>
+    <descriptor id="goAddBook" title="書籍の追加へ" type="safe" rt="#AddBook" />
+    <descriptor id="doAddBook" title="書籍を追加する" type="unsafe" rt="#MyBookshelf">
+        <descriptor href="#bookshelf_id" />
+        <descriptor href="#content_id" />
+    </descriptor>
+    <descriptor id="goHistory" title="閲覧履歴を見る" type="safe" rt="#History">
+    </descriptor>
+</alps>

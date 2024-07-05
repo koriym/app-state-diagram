@@ -37,6 +37,17 @@ final class PutDiagram
         echo sprintf('Descriptors(%s), Links(%s)', count($profile->descriptors), count($profile->links)) . PHP_EOL;
     }
 
+    public function dump(Config $config): void
+    {
+        $profile = new Profile($config->profile, new LabelName());
+        $index = new IndexPage($config);
+        if ($config->outputMode === DumpDocs::MODE_MARKDOWN) {
+            $this->drawMarkdown($config, $profile);
+        }
+
+        echo $index->content;
+    }
+
     public function drawMarkdown(Config $config, Profile $profile): void
     {
         $titleProfile = new Profile($config->profile, new LabelNameTitle());
