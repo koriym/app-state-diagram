@@ -10,7 +10,7 @@
 [![Release (asd-action)](https://github.com/alps-asd/app-state-diagram/actions/workflows/release-asd-action.yml/badge.svg)](https://github.com/alps-asd/app-state-diagram/actions/workflows/release-asd-action.yml) 
 
 
-Produces a full application state diagram and hyperlinked documentation from [ALPS](http://alps.io/) file.
+### Visualize Application Semantics and Affordance in REST Architecture
 
 The diagram is hypermedia in SVG format with application states and state transitions linked to the respective semantic descriptor document HTML. The semantic descriptor document HTML is also linked to each other to represent the structure of the REST application.
 
