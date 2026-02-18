@@ -1088,27 +1088,30 @@ window.addEventListener('resize', autoSelectSizeMode);
                     edgeGroups.get(key).push({
                         label: getLabel(trans),
                         id: trans.id,
-                        type: trans.type,
-                        title: trans.title
+                        type: trans.type
                     });
                 });
             }
         });
 
-        // Render edges - single edge per source-target pair with clickable HTML table labels
+        // Render edges - single edge per source-target pair
         edgeGroups.forEach((edges, key) => {
             const [sourceState, targetState] = key.split('|');
             const firstEdge = edges[0];
-            const isMultiple = edges.length > 1;
 
-            const rows = edges.map(e => {
+            if (edges.length === 1) {
+                const e = edges[0];
                 const color = this.getTransitionColor(e.type);
-                const tooltip = (e.title || e.id) + ' (' + (e.type || 'semantic') + ')';
-                const alignAttr = isMultiple ? ' align="left"' : '';
-                return `<tr><td valign="middle"${alignAttr} href="#${e.id}" tooltip="${tooltip}"><font color="${color}">\u25A0</font> ${e.label}</td></tr>`;
-            }).join('');
-            const htmlLabel = `<<table border="0" cellborder="0" cellspacing="0" cellpadding="0">${rows}</table>>`;
-            dot += `    ${sourceState} -> ${targetState} [label=${htmlLabel} URL="#${firstEdge.id}" target="_parent" fontsize=13 class="${firstEdge.id}" penwidth=1.5];\n`;
+                const htmlLabel = `<<FONT COLOR="${color}">\u25A0</FONT> ${e.label}>`;
+                dot += `    ${sourceState} -> ${targetState} [label=${htmlLabel} URL="#${e.id}" target="_parent" fontsize=13 class="${e.id}" penwidth=1.5];\n`;
+            } else {
+                const parts = edges.map(e => {
+                    const color = this.getTransitionColor(e.type);
+                    return `<FONT COLOR="${color}">\u25A0</FONT> ${e.label}`;
+                });
+                const htmlLabel = `<${parts.join('<BR ALIGN="LEFT"/>') + '<BR ALIGN="LEFT"/>'}>`;
+                dot += `    ${sourceState} -> ${targetState} [label=${htmlLabel} URL="#${firstEdge.id}" target="_parent" fontsize=13 class="${firstEdge.id}" penwidth=1.5];\n`;
+            }
         });
 
         dot += '\n';
