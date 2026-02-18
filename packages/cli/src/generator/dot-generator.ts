@@ -79,13 +79,12 @@ export function generateDot(alpsData: AlpsDocument, labelMode: LabelMode = 'id')
       const e = edges[0];
       dot += `    ${sourceState} -> ${targetState} [label="${e.label}" URL="${e.url}" fontsize=13 class="${e.className}" penwidth=1.5 color="${e.color}"];\n`;
     } else {
-      // Multiple edges between same states - combine labels with newline
-      const allSameColor = edges.every(e => e.color === edges[0].color);
-      const edgeColor = allSameColor ? edges[0].color : '#333333';
+      // Multiple edges between same states - combine with HTML label using FONT+BR
       const classes = edges.map(e => e.className).join(' ');
-      const combinedLabel = edges.map(e => e.label).join('\\n');
+      const labelParts = edges.map(e => `<FONT COLOR="${e.color}">${e.label}</FONT>`);
+      const htmlLabel = '<' + labelParts.join('<BR/>') + '>';
 
-      dot += `    ${sourceState} -> ${targetState} [label="${combinedLabel}" fontsize=13 class="${classes}" penwidth=1.5 color="${edgeColor}"];\n`;
+      dot += `    ${sourceState} -> ${targetState} [label=${htmlLabel} fontsize=13 class="${classes}" penwidth=1.5 color="#333333"];\n`;
     }
   }
 
