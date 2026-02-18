@@ -1,7 +1,7 @@
 /**
  * Table generation functions for Node.js
  *
- * Ported from public/js/descriptor2table.js
+ * Ported from docs/js/descriptor2table.js
  * These functions generate HTML tables from ALPS descriptors.
  */
 

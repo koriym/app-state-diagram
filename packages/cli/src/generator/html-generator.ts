@@ -2,7 +2,7 @@
  * HTML Generator for Node.js
  *
  * Generates complete HTML documentation from ALPS data.
- * Ported from public/js/diagramAdapters.js
+ * Ported from docs/js/diagramAdapters.js
  */
 
 import type { AlpsDocument, AlpsDescriptor, AlpsLink } from '../parser/alps-parser';

@@ -6,15 +6,15 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ALPS (Application-Level Profile Semantics) tooling. Generates HTML documentation and state diagrams from ALPS profiles.
 
-**Architecture**: Editor-first design. Browser editor (`/public/`) is the source of truth. CLI is a Node.js adapter.
+**Architecture**: Editor-first design. Browser editor (`/docs/`) is the source of truth. CLI is a Node.js adapter.
 
-See [docs/architecture.md](docs/architecture.md) for detailed architecture documentation.
+See [dev-docs/architecture.md](dev-docs/architecture.md) for detailed architecture documentation.
 
 ## Project Structure
 
 ```
 app-state-diagram/
-├── public/                     # Browser editor (GitHub Pages)
+├── docs/                       # Browser editor (GitHub Pages)
 │   ├── index.html
 │   └── js/
 │       ├── scripts.js          # Editor UI
@@ -29,7 +29,7 @@ app-state-diagram/
 │           ├── generator/      # DOT, SVG, HTML generation
 │           └── resolver/       # External reference resolution
 │
-└── docs/
+└── dev-docs/
     ├── architecture.md
     └── adr/
 ```
@@ -46,14 +46,14 @@ pnpm --filter @alps-asd/cli build
 # CLI usage (after build)
 node packages/cli/dist/asd.js profile.json
 node packages/cli/dist/asd.js profile.xml
-node packages/cli/dist/asd.js profile.json -f svg
-node packages/cli/dist/asd.js profile.json -f dot --echo
+node packages/cli/dist/asd.js profile.json -m svg
+node packages/cli/dist/asd.js profile.json -m dot --echo
 node packages/cli/dist/asd.js profile.json --label title
 ```
 
 ## Key Files
 
-### Browser Editor (public/js/)
+### Browser Editor (docs/js/)
 
 | File | Description |
 |------|-------------|

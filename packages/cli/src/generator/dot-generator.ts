@@ -2,7 +2,7 @@
  * DOT Generator for Node.js
  *
  * Generates Graphviz DOT format from ALPS data.
- * Ported from public/js/diagramAdapters.js Alps2DotAdapter.generateDotFromAlps()
+ * Ported from docs/js/diagramAdapters.js Alps2DotAdapter.generateDotFromAlps()
  */
 
 import type { AlpsDocument, AlpsDescriptor } from '../parser/alps-parser';

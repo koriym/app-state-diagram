@@ -24,13 +24,13 @@ Initial approach was to create a shared TypeScript core library (`@alps-asd/core
 
 ## Decision
 
-**Editor-first architecture**: The browser-based editor (`/public/`) is the source of truth for all UI logic. The CLI is a minimal Node.js adapter.
+**Editor-first architecture**: The browser-based editor (`/docs/`) is the source of truth for all UI logic. The CLI is a minimal Node.js adapter.
 
 ### Final Structure
 
 ```
 app-state-diagram/
-├── public/                     # Browser editor (GitHub Pages)
+├── docs/                     # Browser editor (GitHub Pages)
 │   ├── index.html
 │   └── js/
 │       ├── scripts.js          # Editor UI
@@ -45,12 +45,12 @@ app-state-diagram/
 │           ├── generator/      # DOT, SVG, HTML (ported from JS)
 │           └── resolver/       # External reference resolution
 │
-└── docs/
+└── dev-docs/
 ```
 
 ### Design Principles
 
-1. **JavaScript is the source of truth**: The editor's JavaScript code (`public/js/`) defines the canonical implementation
+1. **JavaScript is the source of truth**: The editor's JavaScript code (`docs/js/`) defines the canonical implementation
 2. **CLI is an adapter**: The CLI provides Node.js-specific functionality (file I/O, fast-xml-parser for XML) while replicating the browser algorithms
 3. **No shared code package**: Instead of a shared `@alps-asd/core`, the CLI contains its own TypeScript port of the necessary functions
 4. **Static hosting**: The editor runs on GitHub Pages with no build step

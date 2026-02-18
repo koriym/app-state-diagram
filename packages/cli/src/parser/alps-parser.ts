@@ -2,7 +2,7 @@
  * Node.js ALPS Parser
  *
  * Parses ALPS documents (JSON/XML) using fast-xml-parser for XML.
- * This is the Node.js adapter for the browser-based parser in public/js/diagramAdapters.js
+ * This is the Node.js adapter for the browser-based parser in docs/js/diagramAdapters.js
  */
 
 import { XMLParser } from 'fast-xml-parser';

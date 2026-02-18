@@ -4,13 +4,13 @@ This document describes the architecture of app-state-diagram.
 
 ## Design Philosophy
 
-**Editor-first, CLI as adapter**: The browser-based editor (`/public/`) is the source of truth for all UI logic. The CLI (`/packages/cli/`) is a Node.js adapter that provides command-line access using the same algorithms.
+**Editor-first, CLI as adapter**: The browser-based editor (`/docs/`) is the source of truth for all UI logic. The CLI (`/packages/cli/`) is a Node.js adapter that provides command-line access using the same algorithms.
 
 ## Project Structure
 
 ```
 app-state-diagram/
-├── public/                     # Browser-based editor (GitHub Pages)
+├── docs/                     # Browser-based editor (GitHub Pages)
 │   ├── index.html              # Main editor page
 │   └── js/
 │       ├── scripts.js          # Editor UI (Ace, validation)
@@ -25,7 +25,7 @@ app-state-diagram/
 │           ├── generator/      # DOT, SVG, HTML generation
 │           └── resolver/       # External reference resolution
 │
-├── docs/
+├── dev-docs/
 │   ├── architecture.md         # This file
 │   └── adr/                    # Architecture Decision Records
 │
@@ -35,7 +35,7 @@ app-state-diagram/
 
 ## Package Overview
 
-### /public/ (Browser Editor)
+### docs/ (Browser Editor)
 
 Static site for GitHub Pages. Contains:
 - Ace Editor for ALPS JSON/XML editing
@@ -74,7 +74,7 @@ Both browser and CLI implement the same algorithms:
            │                                                  │
            ▼                                                  ▼
 ┌─────────────────────────┐                    ┌─────────────────────────┐
-│  Browser (public/js/)   │                    │   CLI (packages/cli/)   │
+│  Browser (docs/js/)   │                    │   CLI (packages/cli/)   │
 │  ┌───────────────────┐  │                    │  ┌───────────────────┐  │
 │  │ DOMParser (XML)   │  │                    │  │ fast-xml-parser   │  │
 │  │ JSON.parse (JSON) │  │                    │  │ JSON.parse        │  │
