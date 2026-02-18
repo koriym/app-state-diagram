@@ -19,10 +19,9 @@ A command-line tool to generate HTML documentation and state diagrams from [ALPS
 ```bash
 git clone https://github.com/alps-asd/app-state-diagram.git
 cd app-state-diagram
-git checkout ts
-npm install
-npm run build
-npm link
+pnpm install
+pnpm run build
+pnpm link
 ```
 
 ## Usage
@@ -44,10 +43,10 @@ asd profile.json --echo
 
 ```bash
 # Generate SVG diagram
-asd profile.json -f svg
+asd profile.json -m svg
 
 # Generate DOT format (Graphviz)
-asd profile.json -f dot -o diagram.dot
+asd profile.json -m dot -o diagram.dot
 ```
 
 ### Validate Only
