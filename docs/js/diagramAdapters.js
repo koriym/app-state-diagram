@@ -1073,19 +1073,45 @@ window.addEventListener('resize', autoSelectSizeMode);
 
         dot += '\n';
 
-        // Add transitions as individual edges with symbol prefix and colored text
+        // Group transitions by source-target pair
+        const edgeGroups = new Map();
         transitions.forEach(trans => {
             if (trans.id && trans.rt) {
                 const targetState = trans.rt.replace('#', '');
                 const sourceStates = this.findSourceStatesForTransition(trans.id, descriptors);
 
                 sourceStates.forEach(sourceState => {
-                    const fontColor = this.getTransitionColor(trans.type);
-                    const symbol = this.getTransitionSymbol(trans.type);
-                    const transLabel = symbol + getLabel(trans);
-
-                    dot += `    ${sourceState} -> ${targetState} [label="${transLabel}" URL="#${trans.id}" fontsize=13 fontcolor="${fontColor}" class="${trans.id}" penwidth=1.5 color="#555555"];\n`;
+                    const key = `${sourceState}|${targetState}`;
+                    if (!edgeGroups.has(key)) {
+                        edgeGroups.set(key, []);
+                    }
+                    edgeGroups.get(key).push({
+                        label: getLabel(trans),
+                        id: trans.id,
+                        type: trans.type
+                    });
                 });
+            }
+        });
+
+        // Render edges - single edge per source-target pair with clickable HTML labels
+        edgeGroups.forEach((edges, key) => {
+            const [sourceState, targetState] = key.split('|');
+            const classes = edges.map(e => e.id).join(' ');
+
+            if (edges.length === 1) {
+                const e = edges[0];
+                const fontColor = this.getTransitionColor(e.type);
+                const symbol = this.getTransitionSymbol(e.type);
+                dot += `    ${sourceState} -> ${targetState} [label="${symbol}${e.label}" URL="#${e.id}" fontsize=13 fontcolor="${fontColor}" class="${e.id}" penwidth=1.5 color="#555555"];\n`;
+            } else {
+                const rows = edges.map(e => {
+                    const fontColor = this.getTransitionColor(e.type);
+                    const symbol = this.getTransitionSymbol(e.type);
+                    return `<TR><TD HREF="#${e.id}" TITLE="${e.id}"><FONT COLOR="${fontColor}" POINT-SIZE="13">${symbol}${e.label}</FONT></TD></TR>`;
+                }).join('');
+                const htmlLabel = `<<TABLE BORDER="0" CELLBORDER="0" CELLSPACING="0">${rows}</TABLE>>`;
+                dot += `    ${sourceState} -> ${targetState} [label=${htmlLabel} class="${classes}" penwidth=1.5 color="#555555"];\n`;
             }
         });
 
