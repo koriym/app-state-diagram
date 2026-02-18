@@ -1084,7 +1084,7 @@ window.addEventListener('resize', autoSelectSizeMode);
                     const symbol = this.getTransitionSymbol(trans.type);
                     const transLabel = symbol + getLabel(trans);
 
-                    dot += `    ${sourceState} -> ${targetState} [label="${transLabel}" URL="#${trans.id}" fontsize=13 fontcolor="${fontColor}" class="${trans.id}" penwidth=1.5 color="#888888"];\n`;
+                    dot += `    ${sourceState} -> ${targetState} [label="${transLabel}" URL="#${trans.id}" fontsize=13 fontcolor="${fontColor}" class="${trans.id}" penwidth=1.5 color="#555555"];\n`;
                 });
             }
         });

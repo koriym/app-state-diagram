@@ -57,7 +57,7 @@ export function generateDot(alpsData: AlpsDocument, labelMode: LabelMode = 'id')
       const transLabel = symbol + getLabel(trans);
 
       for (const sourceState of sourceStates) {
-        dot += `    ${sourceState} -> ${targetState} [label="${transLabel}" URL="#${trans.id}" fontsize=13 fontcolor="${fontColor}" class="${trans.id}" penwidth=1.5 color="#888888"];\n`;
+        dot += `    ${sourceState} -> ${targetState} [label="${transLabel}" URL="#${trans.id}" fontsize=13 fontcolor="${fontColor}" class="${trans.id}" penwidth=1.5 color="#555555"];\n`;
       }
     }
   }
