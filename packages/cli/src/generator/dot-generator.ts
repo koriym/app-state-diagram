@@ -76,15 +76,10 @@ export function generateDot(alpsData: AlpsDocument, labelMode: LabelMode = 'id')
     if (edges.length === 1) {
       const e = edges[0];
       const color = getTransitionColor(e.type);
-      const htmlLabel = `<<FONT COLOR="${color}">\u25A0</FONT> ${e.label}>`;
-      dot += `    ${sourceState} -> ${targetState} [label=${htmlLabel} URL="#${e.id}" target="_parent" fontsize=13 class="${e.id}" penwidth=1.5];\n`;
+      dot += `    ${sourceState} -> ${targetState} [label="${e.label}" URL="#${e.id}" target="_parent" fontsize=13 fontcolor="${color}" class="${e.id}" penwidth=1.5];\n`;
     } else {
-      const parts = edges.map(e => {
-        const color = getTransitionColor(e.type);
-        return `<FONT COLOR="${color}">\u25A0</FONT> ${e.label}`;
-      });
-      const htmlLabel = `<${parts.join('<BR ALIGN="LEFT"/>') + '<BR ALIGN="LEFT"/>'}>`;
-      dot += `    ${sourceState} -> ${targetState} [label=${htmlLabel} URL="#${firstEdge.id}" target="_parent" fontsize=13 class="${firstEdge.id}" penwidth=1.5];\n`;
+      const label = edges.map(e => e.label).join('\\l') + '\\l';
+      dot += `    ${sourceState} -> ${targetState} [label="${label}" URL="#${firstEdge.id}" target="_parent" fontsize=13 class="${firstEdge.id}" penwidth=1.5];\n`;
     }
   }
 
