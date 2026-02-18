@@ -1106,19 +1106,13 @@ window.addEventListener('resize', autoSelectSizeMode);
                 const e = edges[0];
                 dot += `    ${sourceState} -> ${targetState} [label="${e.label}" URL="${e.url}" fontsize=13 class="${e.className}" penwidth=1.5 color="${e.color}"];\n`;
             } else {
-                // Multiple edges between same states - combine into single edge with HTML label
+                // Multiple edges between same states - combine labels with newline
                 const allSameColor = edges.every(e => e.color === edges[0].color);
                 const edgeColor = allSameColor ? edges[0].color : '#333333';
                 const classes = edges.map(e => e.className).join(' ');
+                const combinedLabel = edges.map(e => e.label).join('\\n');
 
-                let htmlLabel = '<<TABLE BORDER="0" CELLBORDER="0" CELLSPACING="1">';
-                edges.forEach(e => {
-                    const escapedLabel = e.label.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
-                    htmlLabel += `<TR><TD HREF="${e.url}"><FONT COLOR="${e.color}" POINT-SIZE="13">${escapedLabel}</FONT></TD></TR>`;
-                });
-                htmlLabel += '</TABLE>>';
-
-                dot += `    ${sourceState} -> ${targetState} [label=${htmlLabel} class="${classes}" penwidth=1.5 color="${edgeColor}"];\n`;
+                dot += `    ${sourceState} -> ${targetState} [label="${combinedLabel}" fontsize=13 class="${classes}" penwidth=1.5 color="${edgeColor}"];\n`;
             }
         });
 
