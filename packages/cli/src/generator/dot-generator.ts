@@ -47,7 +47,8 @@ export function generateDot(alpsData: AlpsDocument, labelMode: LabelMode = 'id')
 
   dot += '\n';
 
-  // Add transitions
+  // Add transitions - group by source-target pair to prevent overlapping edges
+  const edgeGroups = new Map<string, Array<{ label: string; url: string; color: string; className: string }>>();
   for (const trans of transitions) {
     if (trans.id && trans.rt) {
       const targetState = trans.rt.replace('#', '');
@@ -56,8 +57,41 @@ export function generateDot(alpsData: AlpsDocument, labelMode: LabelMode = 'id')
       const transLabel = getLabel(trans);
 
       for (const sourceState of sourceStates) {
-        dot += `    ${sourceState} -> ${targetState} [label="${transLabel}" URL="#${trans.id}" fontsize=13 class="${trans.id}" penwidth=1.5 color="${color}"];\n`;
+        const key = `${sourceState}|${targetState}`;
+        if (!edgeGroups.has(key)) {
+          edgeGroups.set(key, []);
+        }
+        edgeGroups.get(key)!.push({
+          label: transLabel,
+          url: `#${trans.id}`,
+          color,
+          className: trans.id,
+        });
       }
+    }
+  }
+
+  // Render grouped edges
+  for (const [key, edges] of edgeGroups) {
+    const [sourceState, targetState] = key.split('|');
+
+    if (edges.length === 1) {
+      const e = edges[0];
+      dot += `    ${sourceState} -> ${targetState} [label="${e.label}" URL="${e.url}" fontsize=13 class="${e.className}" penwidth=1.5 color="${e.color}"];\n`;
+    } else {
+      // Multiple edges between same states - combine into single edge with HTML label
+      const allSameColor = edges.every(e => e.color === edges[0].color);
+      const edgeColor = allSameColor ? edges[0].color : '#333333';
+      const classes = edges.map(e => e.className).join(' ');
+
+      let htmlLabel = '<<TABLE BORDER="0" CELLBORDER="0" CELLSPACING="1">';
+      for (const e of edges) {
+        const escapedLabel = e.label.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+        htmlLabel += `<TR><TD HREF="${e.url}"><FONT COLOR="${e.color}" POINT-SIZE="13">${escapedLabel}</FONT></TD></TR>`;
+      }
+      htmlLabel += '</TABLE>>';
+
+      dot += `    ${sourceState} -> ${targetState} [label=${htmlLabel} class="${classes}" penwidth=1.5 color="${edgeColor}"];\n`;
     }
   }
 

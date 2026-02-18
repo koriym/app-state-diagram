@@ -1073,7 +1073,8 @@ window.addEventListener('resize', autoSelectSizeMode);
 
         dot += '\n';
 
-        // Add transitions
+        // Add transitions - group by source-target pair to prevent overlapping edges
+        const edgeGroups = new Map();
         transitions.forEach(trans => {
             if (trans.id && trans.rt) {
                 const targetState = trans.rt.replace('#', '');
@@ -1082,10 +1083,42 @@ window.addEventListener('resize', autoSelectSizeMode);
                 sourceStates.forEach(sourceState => {
                     const color = this.getTransitionColor(trans.type);
                     const transLabel = getLabel(trans);
+                    const key = `${sourceState}|${targetState}`;
 
-                    // Color-coded edges without symbol
-                    dot += `    ${sourceState} -> ${targetState} [label="${transLabel}" URL="#${trans.id}" fontsize=13 class="${trans.id}" penwidth=1.5 color="${color}"];\n`;
+                    if (!edgeGroups.has(key)) {
+                        edgeGroups.set(key, []);
+                    }
+                    edgeGroups.get(key).push({
+                        label: transLabel,
+                        url: `#${trans.id}`,
+                        color: color,
+                        className: trans.id
+                    });
                 });
+            }
+        });
+
+        // Render grouped edges
+        edgeGroups.forEach((edges, key) => {
+            const [sourceState, targetState] = key.split('|');
+
+            if (edges.length === 1) {
+                const e = edges[0];
+                dot += `    ${sourceState} -> ${targetState} [label="${e.label}" URL="${e.url}" fontsize=13 class="${e.className}" penwidth=1.5 color="${e.color}"];\n`;
+            } else {
+                // Multiple edges between same states - combine into single edge with HTML label
+                const allSameColor = edges.every(e => e.color === edges[0].color);
+                const edgeColor = allSameColor ? edges[0].color : '#333333';
+                const classes = edges.map(e => e.className).join(' ');
+
+                let htmlLabel = '<<TABLE BORDER="0" CELLBORDER="0" CELLSPACING="1">';
+                edges.forEach(e => {
+                    const escapedLabel = e.label.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+                    htmlLabel += `<TR><TD HREF="${e.url}"><FONT COLOR="${e.color}" POINT-SIZE="13">${escapedLabel}</FONT></TD></TR>`;
+                });
+                htmlLabel += '</TABLE>>';
+
+                dot += `    ${sourceState} -> ${targetState} [label=${htmlLabel} class="${classes}" penwidth=1.5 color="${edgeColor}"];\n`;
             }
         });
 
