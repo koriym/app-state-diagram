@@ -1067,7 +1067,7 @@ window.addEventListener('resize', autoSelectSizeMode);
         // Add state nodes
         states.forEach(state => {
             if (state.id) {
-                dot += `    ${state.id} [margin=0.1, label="${getLabel(state)}", shape=box, URL="#${state.id}"]\n`;
+                dot += `    ${state.id} [margin=0.1, label="${getLabel(state)}", shape=box, URL="#${state.id}" target="_parent"]\n`;
             }
         });
 
@@ -1088,31 +1088,27 @@ window.addEventListener('resize', autoSelectSizeMode);
                     edgeGroups.get(key).push({
                         label: getLabel(trans),
                         id: trans.id,
-                        type: trans.type
+                        type: trans.type,
+                        title: trans.title
                     });
                 });
             }
         });
 
-        // Render edges - single edge per source-target pair with clickable HTML labels
+        // Render edges - single edge per source-target pair with clickable HTML table labels
         edgeGroups.forEach((edges, key) => {
             const [sourceState, targetState] = key.split('|');
-            const classes = edges.map(e => e.id).join(' ');
+            const firstEdge = edges[0];
+            const isMultiple = edges.length > 1;
 
-            if (edges.length === 1) {
-                const e = edges[0];
-                const fontColor = this.getTransitionColor(e.type);
-                const symbol = this.getTransitionSymbol(e.type);
-                dot += `    ${sourceState} -> ${targetState} [label="${symbol}${e.label}" URL="#${e.id}" fontsize=13 fontcolor="${fontColor}" class="${e.id}" penwidth=1.5 color="#555555"];\n`;
-            } else {
-                const rows = edges.map(e => {
-                    const fontColor = this.getTransitionColor(e.type);
-                    const symbol = this.getTransitionSymbol(e.type);
-                    return `<TR><TD HREF="#${e.id}" TITLE="${e.id}"><FONT COLOR="${fontColor}" POINT-SIZE="13">${symbol}${e.label}</FONT></TD></TR>`;
-                }).join('');
-                const htmlLabel = `<<TABLE BORDER="0" CELLBORDER="0" CELLSPACING="0">${rows}</TABLE>>`;
-                dot += `    ${sourceState} -> ${targetState} [label=${htmlLabel} class="${classes}" penwidth=1.5 color="#555555"];\n`;
-            }
+            const rows = edges.map(e => {
+                const color = this.getTransitionColor(e.type);
+                const tooltip = (e.title || e.id) + ' (' + (e.type || 'semantic') + ')';
+                const alignAttr = isMultiple ? ' align="left"' : '';
+                return `<tr><td valign="middle"${alignAttr} href="#${e.id}" tooltip="${tooltip}"><font color="${color}">\u25A0</font> ${e.label}</td></tr>`;
+            }).join('');
+            const htmlLabel = `<<table border="0" cellborder="0" cellspacing="0" cellpadding="0">${rows}</table>>`;
+            dot += `    ${sourceState} -> ${targetState} [label=${htmlLabel} URL="#${firstEdge.id}" target="_parent" fontsize=13 class="${firstEdge.id}" penwidth=1.5];\n`;
         });
 
         dot += '\n';
@@ -1120,7 +1116,7 @@ window.addEventListener('resize', autoSelectSizeMode);
         // Add basic state nodes again (for compatibility)
         states.forEach(state => {
             if (state.id) {
-                dot += `    ${state.id} [label="${getLabel(state)}" URL="#${state.id}"]\n`;
+                dot += `    ${state.id} [label="${getLabel(state)}" URL="#${state.id}" target="_parent"]\n`;
             }
         });
 
@@ -1185,16 +1181,8 @@ window.addEventListener('resize', autoSelectSizeMode);
         switch (type) {
             case 'safe': return '#00A86B';
             case 'unsafe': return '#FF4136';
-            case 'idempotent': return '#D4A000';
+            case 'idempotent': return '#FFDC00';
             default: return '#000000';
-        }
-    }
-
-    getTransitionSymbol(type) {
-        switch (type) {
-            case 'unsafe': return '\u26A0 ';
-            case 'idempotent': return '\u21BB ';
-            default: return '';
         }
     }
 
