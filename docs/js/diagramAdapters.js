@@ -1073,45 +1073,19 @@ window.addEventListener('resize', autoSelectSizeMode);
 
         dot += '\n';
 
-        // Add transitions - group by source-target pair to prevent overlapping edges
-        const edgeGroups = new Map();
+        // Add transitions as individual edges with symbol prefix and colored text
         transitions.forEach(trans => {
             if (trans.id && trans.rt) {
                 const targetState = trans.rt.replace('#', '');
                 const sourceStates = this.findSourceStatesForTransition(trans.id, descriptors);
 
                 sourceStates.forEach(sourceState => {
-                    const color = this.getTransitionColor(trans.type);
-                    const transLabel = getLabel(trans);
-                    const key = `${sourceState}|${targetState}`;
+                    const fontColor = this.getTransitionColor(trans.type);
+                    const symbol = this.getTransitionSymbol(trans.type);
+                    const transLabel = symbol + getLabel(trans);
 
-                    if (!edgeGroups.has(key)) {
-                        edgeGroups.set(key, []);
-                    }
-                    edgeGroups.get(key).push({
-                        label: transLabel,
-                        url: `#${trans.id}`,
-                        color: color,
-                        className: trans.id
-                    });
+                    dot += `    ${sourceState} -> ${targetState} [label="${transLabel}" URL="#${trans.id}" fontsize=13 fontcolor="${fontColor}" class="${trans.id}" penwidth=1.5 color="#888888"];\n`;
                 });
-            }
-        });
-
-        // Render grouped edges
-        edgeGroups.forEach((edges, key) => {
-            const [sourceState, targetState] = key.split('|');
-
-            if (edges.length === 1) {
-                const e = edges[0];
-                dot += `    ${sourceState} -> ${targetState} [label="${e.label}" URL="${e.url}" fontsize=13 class="${e.className}" penwidth=1.5 color="${e.color}"];\n`;
-            } else {
-                // Multiple edges between same states - combine with HTML label using FONT+BR
-                const classes = edges.map(e => e.className).join(' ');
-                const labelParts = edges.map(e => `<FONT COLOR="${e.color}">${e.label}</FONT>`);
-                const htmlLabel = '<' + labelParts.join('<BR/>') + '>';
-
-                dot += `    ${sourceState} -> ${targetState} [label=${htmlLabel} fontsize=13 class="${classes}" penwidth=1.5 color="#333333"];\n`;
             }
         });
 
@@ -1187,6 +1161,14 @@ window.addEventListener('resize', autoSelectSizeMode);
             case 'unsafe': return '#FF4136';
             case 'idempotent': return '#D4A000';
             default: return '#000000';
+        }
+    }
+
+    getTransitionSymbol(type) {
+        switch (type) {
+            case 'unsafe': return '\u26A0 ';
+            case 'idempotent': return '\u21BB ';
+            default: return '';
         }
     }
 

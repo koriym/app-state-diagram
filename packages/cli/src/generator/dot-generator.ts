@@ -47,44 +47,18 @@ export function generateDot(alpsData: AlpsDocument, labelMode: LabelMode = 'id')
 
   dot += '\n';
 
-  // Add transitions - group by source-target pair to prevent overlapping edges
-  const edgeGroups = new Map<string, Array<{ label: string; url: string; color: string; className: string }>>();
+  // Add transitions as individual edges with symbol prefix and colored text
   for (const trans of transitions) {
     if (trans.id && trans.rt) {
       const targetState = trans.rt.replace('#', '');
       const sourceStates = findSourceStatesForTransition(trans.id, descriptors);
-      const color = getTransitionColor(trans.type);
-      const transLabel = getLabel(trans);
+      const fontColor = getTransitionColor(trans.type);
+      const symbol = getTransitionSymbol(trans.type);
+      const transLabel = symbol + getLabel(trans);
 
       for (const sourceState of sourceStates) {
-        const key = `${sourceState}|${targetState}`;
-        if (!edgeGroups.has(key)) {
-          edgeGroups.set(key, []);
-        }
-        edgeGroups.get(key)!.push({
-          label: transLabel,
-          url: `#${trans.id}`,
-          color,
-          className: trans.id,
-        });
+        dot += `    ${sourceState} -> ${targetState} [label="${transLabel}" URL="#${trans.id}" fontsize=13 fontcolor="${fontColor}" class="${trans.id}" penwidth=1.5 color="#888888"];\n`;
       }
-    }
-  }
-
-  // Render grouped edges
-  for (const [key, edges] of edgeGroups) {
-    const [sourceState, targetState] = key.split('|');
-
-    if (edges.length === 1) {
-      const e = edges[0];
-      dot += `    ${sourceState} -> ${targetState} [label="${e.label}" URL="${e.url}" fontsize=13 class="${e.className}" penwidth=1.5 color="${e.color}"];\n`;
-    } else {
-      // Multiple edges between same states - combine with HTML label using FONT+BR
-      const classes = edges.map(e => e.className).join(' ');
-      const labelParts = edges.map(e => `<FONT COLOR="${e.color}">${e.label}</FONT>`);
-      const htmlLabel = '<' + labelParts.join('<BR/>') + '>';
-
-      dot += `    ${sourceState} -> ${targetState} [label=${htmlLabel} fontsize=13 class="${classes}" penwidth=1.5 color="#333333"];\n`;
     }
   }
 
@@ -135,6 +109,20 @@ function getTransitionColor(type?: string): string {
       return '#D4A000';
     default:
       return '#000000';
+  }
+}
+
+/**
+ * Get symbol prefix for transition type
+ */
+function getTransitionSymbol(type?: string): string {
+  switch (type) {
+    case 'unsafe':
+      return '\u26A0 ';
+    case 'idempotent':
+      return '\u21BB ';
+    default:
+      return '';
   }
 }
 
