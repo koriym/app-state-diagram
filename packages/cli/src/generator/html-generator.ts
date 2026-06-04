@@ -174,6 +174,17 @@ function scrollToDescriptor(id) {
     }
 }
 
+function setDescriptorHash(id) {
+    if (!id) return;
+    if (window.updateDiagramHash) {
+        window.updateDiagramHash(id);
+        return;
+    }
+    const url = new URL(window.location.href);
+    url.hash = '#' + encodeURIComponent(id);
+    window.history.replaceState(null, '', url.toString());
+}
+
 document.addEventListener('DOMContentLoaded', function() {
     // Add click handlers to all SVG elements with href="#something"
     const svgLinks = document.querySelectorAll('svg a[href^="#"], svg a[*|href^="#"]');
@@ -186,6 +197,7 @@ document.addEventListener('DOMContentLoaded', function() {
             const href = this.getAttribute('href') || this.getAttributeNS('http://www.w3.org/1999/xlink', 'href');
             if (href && href.startsWith('#')) {
                 const id = href.substring(1);
+                setDescriptorHash(id);
                 scrollToDescriptor(id);
             }
         });
@@ -212,6 +224,7 @@ document.addEventListener('DOMContentLoaded', function() {
             // Scroll to target row if different
             const currentRow = this.closest('tr');
             const targetRow = document.getElementById('descriptor-' + id);
+            if (targetRow) setDescriptorHash(id);
 
             if (targetRow && targetRow !== currentRow) {
                 targetRow.scrollIntoView({ behavior: 'smooth', block: 'center' });
@@ -299,6 +312,93 @@ ${linksHtml}
 <script>
 // Tag filtering
 const tagDescriptorMap = ${escapeJsonForScript(tagDescriptorMap)};
+let isApplyingUrlState = false;
+let hasExplicitSizeMode = false;
+let currentDescriptorHash = '';
+
+const getTagsFromValues = (values) => {
+    return values
+        .flatMap(value => String(value).split(','))
+        .map(tag => tag.trim())
+        .filter(tag => tag && Object.prototype.hasOwnProperty.call(tagDescriptorMap, tag));
+};
+
+const getCurrentHash = () => {
+    return window.location.hash ? decodeURIComponent(window.location.hash.substring(1)) : '';
+};
+
+const getCurrentLabelMode = () => {
+    return document.querySelector('input[name="labelMode"]:checked')?.value || 'id';
+};
+
+const getCurrentSizeMode = () => {
+    return document.querySelector('input[name="sizeMode"]:checked')?.value || 'original';
+};
+
+const getSelectedTags = () => {
+    return Array.from(document.querySelectorAll('.tag-trigger-checkbox'))
+        .filter(checkbox => checkbox.checked)
+        .map(checkbox => checkbox.getAttribute('data-tag'))
+        .filter(Boolean);
+};
+
+const readUrlState = () => {
+    const params = new URLSearchParams(window.location.search);
+    const label = params.get('label') === 'title' ? 'title' : 'id';
+    const rawSize = params.get('size');
+    const size = rawSize === 'fit' || rawSize === 'original' ? rawSize : '';
+    return {
+        tag: getTagsFromValues(params.getAll('tag')),
+        label,
+        size,
+        hash: getCurrentHash()
+    };
+};
+
+const collectUrlState = () => {
+    return {
+        tag: getSelectedTags(),
+        label: getCurrentLabelMode(),
+        size: getCurrentSizeMode(),
+        hash: currentDescriptorHash || getCurrentHash()
+    };
+};
+
+const replaceUrlState = (state) => {
+    const url = new URL(window.location.href);
+    url.searchParams.delete('tag');
+    if (state.tag.length > 0) {
+        url.searchParams.set('tag', state.tag.join(','));
+    }
+    if (state.label === 'title') {
+        url.searchParams.set('label', 'title');
+    } else {
+        url.searchParams.delete('label');
+    }
+    if (state.size === 'fit' || state.size === 'original') {
+        url.searchParams.set('size', state.size);
+    } else {
+        url.searchParams.delete('size');
+    }
+    url.hash = state.hash ? '#' + encodeURIComponent(state.hash) : '';
+    window.history.replaceState(null, '', url.toString());
+};
+
+const publishUrlState = () => {
+    if (isApplyingUrlState) return;
+    hasExplicitSizeMode = true;
+    const state = collectUrlState();
+    if (window.parent !== window) {
+        window.parent.postMessage({ type: 'diagramStateChanged', state }, '*');
+    } else {
+        replaceUrlState(state);
+    }
+};
+
+window.updateDiagramHash = (id) => {
+    currentDescriptorHash = id || '';
+    publishUrlState();
+};
 
 const changeColorByTitle = (titleOrClass, newNodeColor, newEdgeColor, highlight = false) => {
     const elements = Array.from(document.getElementsByTagName('g'));
@@ -339,13 +439,21 @@ const setupTagTrigger = () => {
     const checkboxes = document.querySelectorAll('.tag-trigger-checkbox');
     checkboxes.forEach(checkbox => {
         checkbox.addEventListener('change', function() {
-            const tag = this.getAttribute('data-tag');
-            this.checked ?
-                document.dispatchEvent(new CustomEvent('tagon-' + tag)) :
-                document.dispatchEvent(new CustomEvent('tagoff-' + tag));
+            applySelectedTagsToDiagram();
+            publishUrlState();
         });
     });
 };
+
+function applySelectedTagsToDiagram() {
+    const selectedTags = new Set(getSelectedTags());
+    Object.keys(tagDescriptorMap).forEach(tag => {
+        document.dispatchEvent(new CustomEvent('tagoff-' + tag));
+    });
+    selectedTags.forEach(tag => {
+        document.dispatchEvent(new CustomEvent('tagon-' + tag));
+    });
+}
 
 const tagColors = ['LightGreen', 'SkyBlue', 'LightCoral', 'LightSalmon', 'Khaki', 'Plum', 'Wheat'];
 let colorIndex = 0;
@@ -442,6 +550,15 @@ async function regenerateSvg(labelMode) {
         const vizInstance = new Viz();
         const svgString = await vizInstance.renderString(dotContent, { format: 'svg' });
         svgGraph.innerHTML = svgString;
+        applySelectedTagsToDiagram();
+        if (hasExplicitSizeMode) {
+            applySizeMode(getCurrentSizeMode());
+        } else {
+            autoSelectSizeMode();
+        }
+        if (currentDescriptorHash) {
+            setTimeout(() => scrollToDescriptor(currentDescriptorHash), 0);
+        }
     } catch (error) {
         console.error('Error regenerating SVG:', error);
         svgGraph.innerHTML = '<p style="color:red;">Error regenerating diagram: ' + error.message + '</p>';
@@ -450,24 +567,34 @@ async function regenerateSvg(labelMode) {
 
 document.querySelectorAll('input[name="labelMode"]').forEach(radio => {
     radio.addEventListener('change', function() {
-        regenerateSvg(this.value);
+        regenerateSvg(this.value).then(() => publishUrlState());
     });
 });
 
 // Size mode toggle
 document.querySelectorAll('input[name="sizeMode"]').forEach(radio => {
     radio.addEventListener('change', function() {
-        const svgContainer = document.getElementById('svg-container');
-        if (this.value === 'fit') {
-            svgContainer.classList.add('fit-width');
-        } else {
-            svgContainer.classList.remove('fit-width');
-            setTimeout(centerSvgScroll, 10);
-        }
+        applySizeMode(this.value, true);
+        publishUrlState();
     });
 });
 
+function applySizeMode(sizeMode, explicit = false) {
+    const svgContainer = document.getElementById('svg-container');
+    if (!svgContainer || (sizeMode !== 'fit' && sizeMode !== 'original')) return;
+    hasExplicitSizeMode = hasExplicitSizeMode || explicit;
+    const radio = document.querySelector('input[name="sizeMode"][value="' + sizeMode + '"]');
+    if (radio) radio.checked = true;
+    if (sizeMode === 'fit') {
+        svgContainer.classList.add('fit-width');
+    } else {
+        svgContainer.classList.remove('fit-width');
+        setTimeout(centerSvgScroll, 10);
+    }
+}
+
 function autoSelectSizeMode() {
+    if (hasExplicitSizeMode) return;
     const svgContainer = document.getElementById('svg-container');
     const svgElement = document.querySelector('#svg-graph svg');
     const fitRadio = document.querySelector('input[name="sizeMode"][value="fit"]');
@@ -478,6 +605,7 @@ function autoSelectSizeMode() {
     svgContainer.classList.remove('fit-width');
 
     setTimeout(() => {
+        if (hasExplicitSizeMode) return;
         const svgWidth = svgElement.getBoundingClientRect().width;
         const containerWidth = svgContainer.clientWidth;
 
@@ -491,6 +619,48 @@ function autoSelectSizeMode() {
     }, 0);
 }
 
+async function applyUrlState(state) {
+    isApplyingUrlState = true;
+    try {
+        const nextState = state || readUrlState();
+        currentDescriptorHash = nextState.hash || '';
+
+        document.querySelectorAll('.tag-trigger-checkbox').forEach(checkbox => {
+            const tag = checkbox.getAttribute('data-tag');
+            checkbox.checked = Boolean(tag && nextState.tag.includes(tag));
+        });
+
+        if (nextState.size) {
+            applySizeMode(nextState.size, true);
+        }
+
+        const currentLabelMode = getCurrentLabelMode();
+        const labelRadio = document.querySelector('input[name="labelMode"][value="' + nextState.label + '"]');
+        if (labelRadio) labelRadio.checked = true;
+        if (currentLabelMode !== nextState.label) {
+            await regenerateSvg(nextState.label);
+        }
+
+        if (nextState.size) {
+            applySizeMode(nextState.size, true);
+        } else {
+            autoSelectSizeMode();
+        }
+        applySelectedTagsToDiagram();
+        if (currentDescriptorHash) {
+            setTimeout(() => scrollToDescriptor(currentDescriptorHash), 0);
+        }
+    } finally {
+        isApplyingUrlState = false;
+    }
+}
+
+window.addEventListener('message', function(event) {
+    if (event.data && event.data.type === 'applyUrlState') {
+        applyUrlState(event.data.state);
+    }
+});
+
 function centerSvgScroll() {
     const svgContainer = document.getElementById('svg-container');
     if (svgContainer && !svgContainer.classList.contains('fit-width')) {
@@ -501,6 +671,7 @@ function centerSvgScroll() {
     }
 }
 
+applyUrlState();
 document.addEventListener('DOMContentLoaded', autoSelectSizeMode);
 window.addEventListener('resize', autoSelectSizeMode);
 
