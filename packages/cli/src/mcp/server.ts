@@ -7,7 +7,7 @@
  * transitions, enumerate paths) and update descriptor documentation.
  *
  * Large docs are automatically stored in external Markdown files under
- * alps-doc/ and linked via doc.href (see doc-store.ts).
+ * alps/docs/ and linked via doc.href (see doc-store.ts).
  */
 
 import * as fs from 'fs';
@@ -246,7 +246,7 @@ export function createServer(): McpServer {
       title: 'Get descriptor details',
       description:
         'Get full details of one descriptor: definition, resolved documentation ' +
-        '(external alps-doc files are read and inlined), containing states, and ' +
+        '(external alps/ doc files are read and inlined), containing states, and ' +
         'incoming/outgoing transitions.',
       inputSchema: {
         file: fileParam,
@@ -351,7 +351,7 @@ export function createServer(): McpServer {
         'Set or update the documentation of a descriptor in a JSON ALPS profile. ' +
         `Short single-line docs (<= ${INLINE_DOC_MAX_LENGTH} chars) are stored inline; ` +
         'longer or multi-line docs are automatically written to an external Markdown ' +
-        'file (alps-doc/<id>.md) and linked from the profile via doc.href. This keeps ' +
+        'file (alps/docs/<id>.md) and linked from the profile via doc.href. This keeps ' +
         'the profile compact, so feel free to write rich, detailed Markdown ' +
         'documentation describing the meaning of the state and related information.',
       inputSchema: {

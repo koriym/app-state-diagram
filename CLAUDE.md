@@ -79,7 +79,7 @@ pnpm --filter @alps-asd/cli test
 | `generator/table-functions.ts` | Table utilities (ported from JS) |
 | `resolver/file-resolver.ts` | External reference resolution |
 | `mcp/server.ts` | MCP server tools (overview, search, paths, set_doc) |
-| `mcp/doc-store.ts` | Doc externalization (alps-doc/<id>.md via doc.href) |
+| `mcp/doc-store.ts` | Doc externalization (alps/docs/<id>.md via doc.href) |
 | `mcp/graph.ts` | State graph extraction, path finding |
 | `mcp/validator.ts` | ALPS validation (E/W codes) |
 

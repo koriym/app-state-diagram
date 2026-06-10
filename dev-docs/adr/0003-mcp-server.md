@@ -29,21 +29,37 @@ transport) with tools for querying and modifying ALPS profiles:
 - `alps_diagram` — DOT/SVG rendering
 - `alps_set_doc` — documentation writing
 
-### External Documentation Convention (alps-doc/)
+### Auxiliary Design Information Convention (alps/)
 
 Inline `doc` values keep profiles readable only while they stay short.
 For rich documentation, the doc is stored in an external Markdown file
-and linked via the ALPS `doc` element's `href` attribute:
+and linked via the ALPS `doc` element's `href` attribute. All auxiliary
+design information lives under a single `alps/` directory next to the
+profile:
 
 ```text
 profile.json
-alps-doc/
-├── ShoppingCart.md
-└── Checkout.md
+alps/
+├── docs/                 # per-descriptor rich documentation (doc.href)
+│   ├── ShoppingCart.md
+│   └── Checkout.md
+├── rels/                 # link relation definitions (link rel="..." targets)
+│   └── issue.md
+└── links/                # external link targets, pre-compacted for agents
+    └── tax-rules.md      # (summary of a linked external resource)
 ```
 
+- `docs/` is written by `alps_set_doc` and read back by `alps_descriptor`.
+- `rels/` holds definitions of custom link relations used in `link`
+  elements, one file per rel, addressable as `alps/rels/<rel>.md`.
+- `links/` holds agent-ready digests of external link targets — the
+  linked page's content compacted to the essentials (in the spirit of
+  skill files), so agents need not fetch and re-summarize the original.
+  `rels/` and `links/` are reserved conventions; tooling support beyond
+  read-through resolution is future work.
+
 ```json
-"doc": { "href": "alps-doc/ShoppingCart.md", "format": "markdown" }
+"doc": { "href": "alps/docs/ShoppingCart.md", "format": "markdown" }
 ```
 
 `alps_set_doc` decides the placement automatically (`placement: auto`):
@@ -51,8 +67,12 @@ alps-doc/
 | Condition | Placement |
 |-----------|-----------|
 | <= 200 chars, single line | inline |
-| > 200 chars or multi-line | external `alps-doc/<id>.md` |
+| > 200 chars or multi-line | external `alps/docs/<id>.md` |
 | descriptor already links a local doc file | stays external, same file (no churn) |
+
+Profiles using other layouts (e.g. a flat `alps-doc/`) keep working:
+any existing local `doc.href` is honored and updated in place; the
+`alps/docs/` default applies only when a doc is first externalized.
 
 Explicit `placement: inline | external` overrides the heuristic. When
 switching from external to inline, the old file is reported as orphaned
@@ -77,6 +97,6 @@ but never deleted.
   just an input for document generation.
 - The PHP `--mcp` is no longer the only MCP path; the TS version is the
   one maintained going forward.
-- The `alps-doc/` convention enables rich per-descriptor documentation
-  without bloating profiles. HTML output rendering of linked docs is
-  future work.
+- The `alps/` convention gives auxiliary design information (docs, link
+  relations, link digests) a single addressable home without bloating
+  profiles. HTML output rendering of linked docs is future work.

@@ -3,9 +3,13 @@
  *
  * Short docs are stored inline in the ALPS profile. When a doc is too large
  * for inline use (long text, multi-line Markdown), it is written to
- * `alps-doc/<descriptor-id>.md` next to the profile and linked from the
+ * `alps/docs/<descriptor-id>.md` next to the profile and linked from the
  * descriptor via `doc.href`, keeping the profile compact while allowing
  * rich documentation.
+ *
+ * The `alps/` directory is the home for auxiliary design information:
+ * docs/ (descriptor documentation), rels/ (link relation definitions),
+ * links/ (compacted summaries of external link targets). See ADR 0003.
  */
 
 import * as fs from 'fs';
@@ -13,7 +17,7 @@ import * as path from 'path';
 import { findDescriptorById } from '../parser/alps-parser';
 import type { AlpsDoc } from '../parser/alps-parser';
 
-export const DOC_DIR = 'alps-doc';
+export const DOC_DIR = 'alps/docs';
 
 /** Docs longer than this (or multi-line) are stored in an external file */
 export const INLINE_DOC_MAX_LENGTH = 200;
@@ -123,7 +127,7 @@ export function setDescriptorDoc(
 }
 
 /**
- * Resolve the doc of a descriptor, reading external alps-doc files
+ * Resolve the doc of a descriptor, reading external doc files (e.g. alps/docs/)
  */
 export function resolveDoc(
   baseDir: string,
@@ -166,7 +170,7 @@ function resolveSafeLocalPath(baseDir: string, href: string): string | undefined
 }
 
 /**
- * Turn a descriptor id into a safe file name for alps-doc/
+ * Turn a descriptor id into a safe file name for alps/docs/
  */
 function safeFileName(id: string): string {
   return id.replace(/[^A-Za-z0-9._-]/g, '-');

@@ -65,7 +65,7 @@ describe('setDescriptorDoc', () => {
     expect(readProfile().alps.descriptor[1].doc).toEqual({ value: 'new doc', format: 'text' });
   });
 
-  it('stores a large doc in an external alps-doc file linked via doc.href', () => {
+  it('stores a large doc in an external alps/docs file linked via doc.href', () => {
     const doc = '# Home\n\nDetailed documentation.\n\n- rule 1\n- rule 2';
     const result = setDescriptorDoc(profilePath, 'Home', doc);
     expect(result.placement).toBe('external');
@@ -175,7 +175,7 @@ describe('resolveDoc', () => {
     expect(resolveDoc(dir, 'hello')).toEqual({ text: 'hello' });
   });
 
-  it('reads external alps-doc files', () => {
+  it('reads external doc files', () => {
     setDescriptorDoc(profilePath, 'Home', '# Doc\n\nbody');
     const resolved = resolveDoc(dir, { href: `${DOC_DIR}/Home.md`, format: 'markdown' });
     expect(resolved).toEqual({

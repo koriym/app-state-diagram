@@ -57,7 +57,7 @@ Key differences from browser:
 The CLI doubles as an MCP server (stdio) exposing the ALPS profile as a
 queryable application state model for AI agents: overview, descriptor
 search, path finding, diagram rendering, validation, and documentation
-writing. Large docs are externalized to `alps-doc/<id>.md` and linked via
+writing. Large docs are externalized to `alps/docs/<id>.md` and linked via
 `doc.href`. See [ADR 0003](adr/0003-mcp-server.md).
 
 ## Shared Logic
