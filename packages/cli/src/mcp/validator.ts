@@ -6,7 +6,8 @@
  * (E001-E011, W001-W004).
  */
 
-import type { AlpsDocument, AlpsDescriptor } from '../parser/alps-parser';
+import { walkDescriptors } from '../parser/alps-parser';
+import type { AlpsDocument } from '../parser/alps-parser';
 
 export interface ValidationIssue {
   code: string;
@@ -160,16 +161,4 @@ function localFragment(ref: string | undefined): string | null {
     return null;
   }
   return ref.substring(1);
-}
-
-function walkDescriptors(
-  descriptors: AlpsDescriptor[],
-  visit: (desc: AlpsDescriptor) => void
-): void {
-  for (const desc of descriptors) {
-    visit(desc);
-    if (Array.isArray(desc.descriptor)) {
-      walkDescriptors(desc.descriptor, visit);
-    }
-  }
 }

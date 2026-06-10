@@ -52,7 +52,7 @@ alps-doc/
 |-----------|-----------|
 | <= 200 chars, single line | inline |
 | > 200 chars or multi-line | external `alps-doc/<id>.md` |
-| descriptor already uses an alps-doc file | stays external (no churn) |
+| descriptor already links a local doc file | stays external, same file (no churn) |
 
 Explicit `placement: inline | external` overrides the heuristic. When
 switching from external to inline, the old file is reported as orphaned

@@ -84,6 +84,24 @@ describe('setDescriptorDoc', () => {
     expect(fs.readFileSync(path.join(dir, DOC_DIR, 'Home.md'), 'utf-8')).toBe('Now short.\n');
   });
 
+  it('updates a custom local doc.href in place, preserving its format', () => {
+    const profile = {
+      alps: {
+        descriptor: [
+          { id: 'Home', type: 'semantic', doc: { href: 'docs/home.txt', format: 'text' } },
+        ],
+      },
+    };
+    fs.writeFileSync(profilePath, JSON.stringify(profile, null, 2));
+    const result = setDescriptorDoc(profilePath, 'Home', 'Updated doc.');
+    expect(result).toEqual({ id: 'Home', placement: 'external', docFile: 'docs/home.txt' });
+    expect(fs.readFileSync(path.join(dir, 'docs/home.txt'), 'utf-8')).toBe('Updated doc.\n');
+    expect(readProfile().alps.descriptor[0].doc).toEqual({
+      href: 'docs/home.txt',
+      format: 'text',
+    });
+  });
+
   it('forces inline placement and reports the orphaned doc file', () => {
     setDescriptorDoc(profilePath, 'Home', '# Long\n\ndoc');
     const result = setDescriptorDoc(profilePath, 'Home', 'Inline now.', 'inline');

@@ -15,7 +15,7 @@ import * as path from 'path';
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
 import { z } from 'zod';
-import { parseAlpsAuto, docText } from '../parser/alps-parser';
+import { parseAlpsAuto, docText, findDescriptorById, walkDescriptors } from '../parser/alps-parser';
 import type { AlpsDocument, AlpsDescriptor } from '../parser/alps-parser';
 import { FileResolver } from '../resolver/file-resolver';
 import { generateDot } from '../generator/dot-generator';
@@ -24,7 +24,8 @@ import { extractGraph, findPaths, formatPath, findContainers } from './graph';
 import { validateAlps } from './validator';
 import { setDescriptorDoc, resolveDoc, INLINE_DOC_MAX_LENGTH } from './doc-store';
 
-const SERVER_VERSION = '0.20.0';
+// Version is read from package.json so releases bump it in one place
+const SERVER_VERSION: string = require('../../package.json').version;
 const DOC_PREVIEW_LENGTH = 80;
 
 interface LoadedProfile {
@@ -60,14 +61,25 @@ function docPreview(desc: AlpsDescriptor): string | undefined {
 }
 
 function summarize(desc: AlpsDescriptor) {
+  const tags = descriptorTags(desc);
+  const doc = docPreview(desc);
   return {
     id: desc.id,
     type: desc.type || 'semantic',
     title: desc.title,
     ...(desc.rt ? { rt: desc.rt } : {}),
-    ...(descriptorTags(desc).length ? { tags: descriptorTags(desc) } : {}),
-    ...(docPreview(desc) ? { doc: docPreview(desc) } : {}),
+    ...(tags.length ? { tags } : {}),
+    ...(doc ? { doc } : {}),
   };
+}
+
+/**
+ * Collect all descriptors (top-level and nested) in document order
+ */
+function allDescriptors(document: AlpsDocument): AlpsDescriptor[] {
+  const result: AlpsDescriptor[] = [];
+  walkDescriptors(document.alps.descriptor || [], desc => result.push(desc));
+  return result;
 }
 
 function jsonResult(data: unknown) {
@@ -101,7 +113,7 @@ export function createServer(): McpServer {
     async ({ file }) => {
       try {
         const { document } = await loadProfile(file);
-        const descriptors = document.alps.descriptor || [];
+        const descriptors = allDescriptors(document);
         const graph = extractGraph(document);
         const tags = new Set<string>();
         for (const desc of descriptors) {
@@ -176,7 +188,7 @@ export function createServer(): McpServer {
     async ({ file, type, tag, text }) => {
       try {
         const { document } = await loadProfile(file);
-        const descriptors = document.alps.descriptor || [];
+        const descriptors = allDescriptors(document);
         const needle = text?.toLowerCase();
         const matches = descriptors.filter(desc => {
           if (!desc.id) {
@@ -220,7 +232,7 @@ export function createServer(): McpServer {
       try {
         const { document, baseDir } = await loadProfile(file);
         const descriptors = document.alps.descriptor || [];
-        const descriptor = descriptors.find(d => d.id === id) || findNested(descriptors, id);
+        const descriptor = findDescriptorById(descriptors, id);
         if (!descriptor) {
           throw new Error(`Descriptor not found: ${id}`);
         }
@@ -338,21 +350,6 @@ export function createServer(): McpServer {
   );
 
   return server;
-}
-
-function findNested(descriptors: AlpsDescriptor[], id: string): AlpsDescriptor | undefined {
-  for (const desc of descriptors) {
-    if (desc.id === id) {
-      return desc;
-    }
-    if (Array.isArray(desc.descriptor)) {
-      const found = findNested(desc.descriptor, id);
-      if (found) {
-        return found;
-      }
-    }
-  }
-  return undefined;
 }
 
 /**

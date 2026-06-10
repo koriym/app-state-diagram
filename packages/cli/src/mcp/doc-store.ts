@@ -10,7 +10,8 @@
 
 import * as fs from 'fs';
 import * as path from 'path';
-import type { AlpsDescriptor, AlpsDoc } from '../parser/alps-parser';
+import { findDescriptorById } from '../parser/alps-parser';
+import type { AlpsDoc } from '../parser/alps-parser';
 
 export const DOC_DIR = 'alps-doc';
 
@@ -39,8 +40,8 @@ export function shouldExternalize(doc: string): boolean {
  * Set or update the doc of a descriptor in a JSON ALPS profile file.
  *
  * With placement 'auto', the doc is stored externally when it is large
- * (see shouldExternalize) or when the descriptor already uses an external
- * doc file under alps-doc/ (to avoid churn between inline and external).
+ * (see shouldExternalize) or when the descriptor already links a local
+ * doc file via doc.href (to avoid churn between inline and external).
  */
 export function setDescriptorDoc(
   profilePath: string,
@@ -76,7 +77,7 @@ export function setDescriptorDoc(
   const existingDoc: string | AlpsDoc | undefined = descriptor.doc;
   const existingHref =
     typeof existingDoc === 'object' && existingDoc?.href ? existingDoc.href : undefined;
-  const hasExternalDoc = existingHref !== undefined && isDocDirHref(existingHref);
+  const hasExternalDoc = existingHref !== undefined && isLocalHref(existingHref);
 
   let external: boolean;
   if (placement === 'auto') {
@@ -89,12 +90,16 @@ export function setDescriptorDoc(
   const result: SetDocResult = { id, placement: external ? 'external' : 'inline' };
 
   if (external) {
-    // Reuse the existing alps-doc file location when present
+    // Reuse the existing local doc file location when present
     const docFile = hasExternalDoc ? existingHref! : `${DOC_DIR}/${safeFileName(id)}.md`;
     const docFilePath = path.resolve(baseDir, docFile);
     fs.mkdirSync(path.dirname(docFilePath), { recursive: true });
     fs.writeFileSync(docFilePath, doc.endsWith('\n') ? doc : `${doc}\n`, 'utf-8');
-    descriptor.doc = { href: docFile, format: 'markdown' };
+    const format =
+      typeof existingDoc === 'object' && hasExternalDoc && existingDoc.format
+        ? existingDoc.format
+        : 'markdown';
+    descriptor.doc = { href: docFile, format };
     result.docFile = docFile;
   } else {
     if (hasExternalDoc) {
@@ -128,7 +133,7 @@ export function resolveDoc(
   if (typeof doc === 'string') {
     return { text: doc };
   }
-  if (doc.href && !/^https?:\/\//.test(doc.href)) {
+  if (doc.href && isLocalHref(doc.href)) {
     const docPath = path.resolve(baseDir, doc.href);
     if (fs.existsSync(docPath)) {
       return { text: fs.readFileSync(docPath, 'utf-8'), href: doc.href, format: doc.format };
@@ -138,29 +143,8 @@ export function resolveDoc(
   return { text: doc.value || '', href: doc.href, format: doc.format };
 }
 
-/**
- * Find a descriptor by id, searching nested descriptors
- */
-function findDescriptorById(descriptors: unknown, id: string): AlpsDescriptor | null {
-  if (!Array.isArray(descriptors)) {
-    return null;
-  }
-  for (const desc of descriptors) {
-    if (desc && typeof desc === 'object') {
-      if ((desc as AlpsDescriptor).id === id) {
-        return desc as AlpsDescriptor;
-      }
-      const found = findDescriptorById((desc as AlpsDescriptor).descriptor, id);
-      if (found) {
-        return found;
-      }
-    }
-  }
-  return null;
-}
-
-function isDocDirHref(href: string): boolean {
-  return href.startsWith(`${DOC_DIR}/`) || href.startsWith(`./${DOC_DIR}/`);
+function isLocalHref(href: string): boolean {
+  return !/^https?:\/\//.test(href);
 }
 
 function safeFileName(id: string): string {

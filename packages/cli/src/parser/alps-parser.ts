@@ -176,6 +176,43 @@ export function docText(doc: string | AlpsDoc | undefined): string {
 }
 
 /**
+ * Visit every descriptor in a tree, depth-first
+ */
+export function walkDescriptors(
+  descriptors: AlpsDescriptor[],
+  visit: (desc: AlpsDescriptor) => void
+): void {
+  for (const desc of descriptors) {
+    visit(desc);
+    if (Array.isArray(desc.descriptor)) {
+      walkDescriptors(desc.descriptor, visit);
+    }
+  }
+}
+
+/**
+ * Find a descriptor by id, searching nested descriptors.
+ * Accepts unknown input so it can be used on raw (unnormalized) JSON.
+ */
+export function findDescriptorById(descriptors: unknown, id: string): AlpsDescriptor | null {
+  if (!Array.isArray(descriptors)) {
+    return null;
+  }
+  for (const desc of descriptors) {
+    if (desc && typeof desc === 'object') {
+      if ((desc as AlpsDescriptor).id === id) {
+        return desc as AlpsDescriptor;
+      }
+      const found = findDescriptorById((desc as AlpsDescriptor).descriptor, id);
+      if (found) {
+        return found;
+      }
+    }
+  }
+  return null;
+}
+
+/**
  * Convert XML descriptor to AlpsDescriptor
  */
 function convertDescriptor(desc: any): AlpsDescriptor {
