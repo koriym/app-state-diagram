@@ -140,6 +140,29 @@ describe('setDescriptorDoc', () => {
     expect(content.endsWith('\n')).toBe(true);
   });
 
+  it('writes through symlinks that stay inside the profile directory', () => {
+    fs.mkdirSync(path.join(dir, 'real-docs'));
+    fs.symlinkSync(path.join(dir, 'real-docs'), path.join(dir, 'linkdocs'));
+    const profile = {
+      alps: { descriptor: [{ id: 'Home', type: 'semantic', doc: { href: 'linkdocs/home.md' } }] },
+    };
+    fs.writeFileSync(profilePath, JSON.stringify(profile));
+    const result = setDescriptorDoc(profilePath, 'Home', 'Linked doc.');
+    expect(result).toEqual({ id: 'Home', placement: 'external', docFile: 'linkdocs/home.md' });
+    expect(fs.readFileSync(path.join(dir, 'real-docs', 'home.md'), 'utf-8')).toBe('Linked doc.\n');
+  });
+
+  it('rejects writes through symlinks escaping the profile directory', () => {
+    const outside = fs.mkdtempSync(path.join(os.tmpdir(), 'doc-store-outside-'));
+    try {
+      fs.symlinkSync(outside, path.join(dir, 'alps'));
+      expect(() => setDescriptorDoc(profilePath, 'Home', 'x\ny')).toThrow('Unsafe doc path');
+      expect(fs.readdirSync(outside)).toEqual([]);
+    } finally {
+      fs.rmSync(outside, { recursive: true, force: true });
+    }
+  });
+
   it('does not reuse unsafe existing doc.href values as write targets', () => {
     const unsafeHrefs = ['../escape.md', '/etc/escape.md', 'file:///etc/escape.md', 'a\\b.md'];
     for (const href of unsafeHrefs) {
@@ -193,6 +216,18 @@ describe('resolveDoc', () => {
   it('does not fetch http urls', () => {
     const resolved = resolveDoc(dir, { href: 'https://example.com/doc.md', value: 'inline' });
     expect(resolved).toEqual({ text: 'inline', href: 'https://example.com/doc.md', format: undefined });
+  });
+
+  it('does not read through symlinks escaping the profile directory', () => {
+    const outside = fs.mkdtempSync(path.join(os.tmpdir(), 'doc-store-outside-'));
+    try {
+      fs.writeFileSync(path.join(outside, 'secret.md'), 'secret');
+      fs.symlinkSync(outside, path.join(dir, 'extdocs'));
+      const resolved = resolveDoc(dir, { href: 'extdocs/secret.md', value: 'fallback' });
+      expect(resolved?.text).toBe('fallback');
+    } finally {
+      fs.rmSync(outside, { recursive: true, force: true });
+    }
   });
 
   it('does not read hrefs that escape the profile directory', () => {

@@ -98,7 +98,11 @@ export function setDescriptorDoc(
   if (external) {
     // Reuse the existing local doc file location when present
     const docFile = hasExternalDoc ? existingHref! : `${DOC_DIR}/${safeFileName(id)}.md`;
-    const docFilePath = resolveSafeLocalPath(baseDir, docFile)!;
+    const docFilePath = resolveSafeLocalPath(baseDir, docFile);
+    if (!docFilePath) {
+      // Reachable only when the default doc dir is a symlink escaping baseDir
+      throw new Error(`Unsafe doc path: ${docFile}`);
+    }
     fs.mkdirSync(path.dirname(docFilePath), { recursive: true });
     fs.writeFileSync(docFilePath, doc.endsWith('\n') ? doc : `${doc}\n`, 'utf-8');
     const format =
@@ -152,7 +156,9 @@ export function resolveDoc(
  * Resolve a doc href against the profile directory, rejecting anything
  * that escapes it: URL schemes ("http:", "file:", Windows drives),
  * protocol-relative or absolute paths, backslashes, and ../ traversal.
- * Returns the absolute path, or undefined when the href is unsafe.
+ * Symlinks inside the profile directory are legitimate (e.g. compat
+ * links keeping old layouts working), but their real targets must stay
+ * inside it. Returns the absolute path, or undefined when unsafe.
  */
 function resolveSafeLocalPath(baseDir: string, href: string): string | undefined {
   if (/^[a-zA-Z][a-zA-Z0-9+.-]*:/.test(href)) {
@@ -164,6 +170,22 @@ function resolveSafeLocalPath(baseDir: string, href: string): string | undefined
   const abs = path.resolve(baseDir, href);
   const rel = path.relative(baseDir, abs);
   if (rel.startsWith('..') || path.isAbsolute(rel)) {
+    return undefined;
+  }
+  // Compare real paths so a symlinked component cannot escape baseDir.
+  // The target file may not exist yet (first write), so check the
+  // deepest existing ancestor instead.
+  try {
+    const baseReal = fs.realpathSync(baseDir);
+    let existing = abs;
+    while (!fs.existsSync(existing)) {
+      existing = path.dirname(existing);
+    }
+    const existingReal = fs.realpathSync(existing);
+    if (existingReal !== baseReal && !existingReal.startsWith(baseReal + path.sep)) {
+      return undefined;
+    }
+  } catch {
     return undefined;
   }
   return abs;
