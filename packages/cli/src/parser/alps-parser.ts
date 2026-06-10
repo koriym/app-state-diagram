@@ -7,12 +7,19 @@
 
 import { XMLParser } from 'fast-xml-parser';
 
+export interface AlpsDoc {
+  value?: string;
+  href?: string;
+  format?: string;
+  contentType?: string;
+}
+
 export interface AlpsDescriptor {
   id?: string;
   type?: 'semantic' | 'safe' | 'unsafe' | 'idempotent';
   title?: string;
   def?: string;
-  doc?: string | { value: string };
+  doc?: string | AlpsDoc;
   rel?: string;
   rt?: string;
   tag?: string;
@@ -29,7 +36,7 @@ export interface AlpsLink {
 export interface AlpsDocument {
   alps: {
     title?: string;
-    doc?: string | { value: string };
+    doc?: string | AlpsDoc;
     descriptor?: AlpsDescriptor[];
     link?: AlpsLink | AlpsLink[];
   };
@@ -116,7 +123,7 @@ function xmlToAlpsObject(parsed: any): AlpsDocument {
   const result: AlpsDocument = {
     alps: {
       title: alps.title?.['#text'] || alps.title || 'ALPS Profile',
-      doc: alps.doc?.['#text'] || alps.doc || '',
+      doc: convertDoc(alps.doc) || '',
       descriptor: descriptors,
     },
   };
@@ -126,6 +133,46 @@ function xmlToAlpsObject(parsed: any): AlpsDocument {
   }
 
   return result;
+}
+
+/**
+ * Convert XML doc element to string or AlpsDoc.
+ * Supports <doc>text</doc> and <doc href="..." format="..."/> forms.
+ */
+function convertDoc(doc: any): string | AlpsDoc | undefined {
+  if (doc === undefined || doc === null) {
+    return undefined;
+  }
+  if (typeof doc === 'string') {
+    return doc;
+  }
+  const result: AlpsDoc = {};
+  if (doc['#text'] !== undefined) {
+    result.value = String(doc['#text']);
+  }
+  if (doc['@_href']) {
+    result.href = doc['@_href'];
+  }
+  if (doc['@_format']) {
+    result.format = doc['@_format'];
+  }
+  if (doc['@_contentType']) {
+    result.contentType = doc['@_contentType'];
+  }
+  return Object.keys(result).length > 0 ? result : undefined;
+}
+
+/**
+ * Get the inline text of a doc (string or AlpsDoc form)
+ */
+export function docText(doc: string | AlpsDoc | undefined): string {
+  if (doc === undefined) {
+    return '';
+  }
+  if (typeof doc === 'string') {
+    return doc;
+  }
+  return doc.value || '';
 }
 
 /**
@@ -144,8 +191,9 @@ function convertDescriptor(desc: any): AlpsDescriptor {
   };
 
   // Extract doc element
-  if (desc.doc) {
-    descriptor.doc = desc.doc['#text'] || desc.doc;
+  const doc = convertDoc(desc.doc);
+  if (doc !== undefined) {
+    descriptor.doc = doc;
   }
 
   // Extract nested descriptors

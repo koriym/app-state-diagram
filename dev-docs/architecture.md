@@ -23,9 +23,10 @@ app-state-diagram/
 │           ├── asd.ts          # CLI entry point
 │           ├── parser/         # ALPS parsing (fast-xml-parser)
 │           ├── generator/      # DOT, SVG, HTML generation
-│           └── resolver/       # External reference resolution
+│           ├── resolver/       # External reference resolution
+│           └── mcp/            # MCP server (asd --mcp, see ADR 0003)
 │
-├── docs/
+├── dev-docs/
 │   ├── architecture.md         # This file
 │   └── adr/                    # Architecture Decision Records
 │
@@ -50,6 +51,14 @@ Node.js CLI tool for generating HTML documentation from ALPS profiles.
 Key differences from browser:
 - Uses `fast-xml-parser` for XML parsing (browser uses `DOMParser`)
 - Uses `@viz-js/viz` (WASM) for SVG generation
+
+### MCP Server (asd --mcp)
+
+The CLI doubles as an MCP server (stdio) exposing the ALPS profile as a
+queryable application state model for AI agents: overview, descriptor
+search, path finding, diagram rendering, validation, and documentation
+writing. Large docs are externalized to `alps-doc/<id>.md` and linked via
+`doc.href`. See [ADR 0003](adr/0003-mcp-server.md).
 
 ## Shared Logic
 

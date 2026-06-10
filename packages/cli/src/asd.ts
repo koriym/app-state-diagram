@@ -14,6 +14,7 @@ import { dotToSvg, dotToSvgHighQuality } from './generator/svg-generator';
 import { generateEditorHtml } from './generator/editor-html-generator';
 import { FileResolver } from './resolver/file-resolver';
 import { startWatch } from './watch';
+import { runMcpServer } from './mcp/server';
 
 const program = new Command();
 
@@ -42,7 +43,14 @@ program
   .option('--validate', 'Validate ALPS profile')
   .option('-w, --watch', 'Watch mode with live reload (requires Chrome with --remote-debugging-port=9222)')
   .option('--port <port>', 'CDP port for watch mode (default: 9222)', '9222')
+  .option('--mcp', 'Run as MCP server (stdio) for AI agents')
   .action(async (inputFile: string | undefined, options) => {
+    // MCP server mode (no input file required; tools take file paths)
+    if (options.mcp) {
+      await runMcpServer();
+      return;
+    }
+
     // Show help if no input file
     if (!inputFile) {
       console.log(`usage: asd [options] alps_file
@@ -55,6 +63,7 @@ Options:
   --port <port>           CDP port for watch mode (default: 9222)
   --label <mode>          Label mode: id or title
   --validate              Validate ALPS profile
+  --mcp                   Run as MCP server (stdio) for AI agents
   -v, --version           Show version information
   -h, --help              Show this help message
 

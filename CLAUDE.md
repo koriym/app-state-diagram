@@ -8,7 +8,7 @@ ALPS (Application-Level Profile Semantics) tooling. Generates HTML documentation
 
 **Architecture**: Editor-first design. Browser editor (`/public/`) is the source of truth. CLI is a Node.js adapter.
 
-See [docs/architecture.md](docs/architecture.md) for detailed architecture documentation.
+See [dev-docs/architecture.md](dev-docs/architecture.md) for detailed architecture documentation.
 
 ## Project Structure
 
@@ -27,9 +27,11 @@ app-state-diagram/
 │           ├── asd.ts          # CLI entry point
 │           ├── parser/         # ALPS parsing (fast-xml-parser)
 │           ├── generator/      # DOT, SVG, HTML generation
-│           └── resolver/       # External reference resolution
+│           ├── resolver/       # External reference resolution
+│           └── mcp/            # MCP server (asd --mcp)
 │
-└── docs/
+├── docs/                       # GitHub Pages site
+└── dev-docs/
     ├── architecture.md
     └── adr/
 ```
@@ -49,6 +51,10 @@ node packages/cli/dist/asd.js profile.xml
 node packages/cli/dist/asd.js profile.json -f svg
 node packages/cli/dist/asd.js profile.json -f dot --echo
 node packages/cli/dist/asd.js profile.json --label title
+node packages/cli/dist/asd.js --mcp   # MCP server (stdio) for AI agents
+
+# Run tests
+pnpm --filter @alps-asd/cli test
 ```
 
 ## Key Files
@@ -72,6 +78,10 @@ node packages/cli/dist/asd.js profile.json --label title
 | `generator/html-generator.ts` | HTML document generation |
 | `generator/table-functions.ts` | Table utilities (ported from JS) |
 | `resolver/file-resolver.ts` | External reference resolution |
+| `mcp/server.ts` | MCP server tools (overview, search, paths, set_doc) |
+| `mcp/doc-store.ts` | Doc externalization (alps-doc/<id>.md via doc.href) |
+| `mcp/graph.ts` | State graph extraction, path finding |
+| `mcp/validator.ts` | ALPS validation (E/W codes) |
 
 ## Descriptor Types
 

@@ -45,6 +45,8 @@ TypeScript版CLI (`@alps-asd/cli`) をPHP版 (`bin/asd`) と互換性を持た�
 |-----------|------|------|
 | `--mcp` | Claude Desktop統合用MCPサーバー | PHP版で動作確認済み。MCPはJSON-RPC over stdioで言語非依存。書き直しリスクを避け、動作しているコードを維持。 |
 
+> **Note**: この判断は [ADR 0003](0003-mcp-server.md) で更新され、MCPサーバーはTypeScript版CLIに実装された（`asd --mcp`）。
+
 ### 不要と判断した機能
 
 | オプション | 説明 | 理由 |

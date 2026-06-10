@@ -25,11 +25,13 @@
   "author": "Akihito Koriyama <akihito.koriyama@gmail.com>",
   "license": "MIT",
   "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.29.0",
     "@viz-js/viz": "^3.11.0",
     "chokidar": "3",
     "chrome-remote-interface": "^0.33.3",
     "commander": "^11.1.0",
-    "fast-xml-parser": "^4.5.0"
+    "fast-xml-parser": "^4.5.0",
+    "zod": "^4.4.3"
   },
   "devDependencies": {
     "@types/chrome-remote-interface": "^0.33.0",

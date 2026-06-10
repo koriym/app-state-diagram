@@ -57,6 +57,56 @@ asd profile.json -f dot -o diagram.dot
 asd profile.json --validate
 ```
 
+### MCP Server (AI Agents)
+
+```bash
+# Run as an MCP server on stdio (for Claude Code, Claude Desktop, etc.)
+asd --mcp
+```
+
+Registers the ALPS profile as a queryable application state model for AI agents:
+
+| Tool | Description |
+|------|-------------|
+| `alps_overview` | Profile summary: states, transitions (from/to), tags |
+| `alps_validate` | Validation with error/warning codes |
+| `alps_search` | Filter descriptors by type, tag, or free text |
+| `alps_descriptor` | Full descriptor details with resolved documentation |
+| `alps_paths` | Enumerate transition paths between two states |
+| `alps_diagram` | Render the state diagram as DOT or SVG |
+| `alps_set_doc` | Set descriptor documentation (auto-externalized when large) |
+
+Example configuration for Claude Code (`.mcp.json`):
+
+```json
+{
+  "mcpServers": {
+    "alps": {
+      "command": "asd",
+      "args": ["--mcp"]
+    }
+  }
+}
+```
+
+#### External Documentation (alps-doc/)
+
+`alps_set_doc` keeps profiles compact while allowing rich documentation.
+Short single-line docs are stored inline. When a doc is large or multi-line
+(e.g. detailed Markdown), it is written to `alps-doc/<descriptor-id>.md`
+next to the profile and linked via the ALPS `doc` element's `href`:
+
+```json
+{
+  "id": "ShoppingCart",
+  "type": "semantic",
+  "doc": { "href": "alps-doc/ShoppingCart.md", "format": "markdown" }
+}
+```
+
+Reading tools (`alps_descriptor`) resolve these links and inline the file
+content automatically.
+
 ## Output Example
 
 The generated HTML includes:
