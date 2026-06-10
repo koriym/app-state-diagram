@@ -6,6 +6,7 @@
  * state/transition model as generator/dot-generator.ts.
  */
 
+import { localFragment } from '../parser/alps-parser';
 import type { AlpsDocument, AlpsDescriptor } from '../parser/alps-parser';
 
 export type TransitionType = 'safe' | 'unsafe' | 'idempotent';
@@ -33,6 +34,9 @@ export interface PathStep {
 
 const TRANSITION_TYPES = new Set(['safe', 'unsafe', 'idempotent']);
 
+/**
+ * Whether a descriptor is a state transition (safe/unsafe/idempotent with rt)
+ */
 export function isTransition(descriptor: AlpsDescriptor): boolean {
   return !!descriptor.type && TRANSITION_TYPES.has(descriptor.type) && !!descriptor.rt;
 }
@@ -45,13 +49,15 @@ export function extractGraph(alpsData: AlpsDocument): StateGraph {
 
   const transitions: TransitionInfo[] = [];
   for (const desc of descriptors) {
-    if (desc.id && isTransition(desc)) {
+    // External rt references (e.g. "other.json#State") are not part of this graph
+    const rtTarget = localFragment(desc.rt);
+    if (desc.id && isTransition(desc) && rtTarget) {
       transitions.push({
         id: desc.id,
         type: desc.type as TransitionType,
         title: desc.title,
         from: findContainers(desc.id, descriptors),
-        to: desc.rt!.replace(/^#/, ''),
+        to: rtTarget,
       });
     }
   }

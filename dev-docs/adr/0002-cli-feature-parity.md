@@ -72,6 +72,6 @@ Profile file not found: filename
 
 - PHP版ユーザーが違和感なくTS版に移行できる
 - watchモードはCDP経由で実装完了（Tag/Table更新は Editor 統合待ち）
-- MCPは PHP 版を別リポジトリで維持
+- MCPは ADR 0003 で TypeScript 版CLIに実装（`asd --mcp`）。PHP版の維持は不要に
 - 設定ファイル機能は省略（シンプルさを優先）
 - Editor を UI の SSOT とすることで将来の機能追加が CLI に影響しない設計

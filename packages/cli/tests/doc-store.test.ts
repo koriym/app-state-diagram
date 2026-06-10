@@ -140,6 +140,19 @@ describe('setDescriptorDoc', () => {
     expect(content.endsWith('\n')).toBe(true);
   });
 
+  it('does not reuse unsafe existing doc.href values as write targets', () => {
+    const unsafeHrefs = ['../escape.md', '/etc/escape.md', 'file:///etc/escape.md', 'a\\b.md'];
+    for (const href of unsafeHrefs) {
+      const profile = {
+        alps: { descriptor: [{ id: 'Home', type: 'semantic', doc: { href } }] },
+      };
+      fs.writeFileSync(profilePath, JSON.stringify(profile));
+      const result = setDescriptorDoc(profilePath, 'Home', 'x\ny');
+      expect(result.docFile).toBe(`${DOC_DIR}/Home.md`);
+      expect(fs.existsSync(path.join(dir, '..', 'escape.md'))).toBe(false);
+    }
+  });
+
   it('rejects unknown descriptor ids', () => {
     expect(() => setDescriptorDoc(profilePath, 'Nope', 'doc')).toThrow('Descriptor not found');
   });
@@ -180,6 +193,19 @@ describe('resolveDoc', () => {
   it('does not fetch http urls', () => {
     const resolved = resolveDoc(dir, { href: 'https://example.com/doc.md', value: 'inline' });
     expect(resolved).toEqual({ text: 'inline', href: 'https://example.com/doc.md', format: undefined });
+  });
+
+  it('does not read hrefs that escape the profile directory', () => {
+    const outside = path.join(path.dirname(dir), 'outside-secret.md');
+    fs.writeFileSync(outside, 'secret');
+    try {
+      for (const href of [`../${path.basename(outside)}`, outside, `file://${outside}`]) {
+        const resolved = resolveDoc(dir, { href, value: 'fallback' });
+        expect(resolved?.text).toBe('fallback');
+      }
+    } finally {
+      fs.rmSync(outside, { force: true });
+    }
   });
 
   it('returns undefined for missing docs', () => {

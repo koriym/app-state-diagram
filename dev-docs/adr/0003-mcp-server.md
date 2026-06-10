@@ -35,7 +35,7 @@ Inline `doc` values keep profiles readable only while they stay short.
 For rich documentation, the doc is stored in an external Markdown file
 and linked via the ALPS `doc` element's `href` attribute:
 
-```
+```text
 profile.json
 alps-doc/
 ├── ShoppingCart.md
@@ -66,6 +66,8 @@ but never deleted.
   `moduleResolution: node`.
 - `alps_set_doc` edits the raw JSON (not the normalized parse) so the
   rest of the profile is preserved, including indentation style.
+- `doc.href` paths are constrained to the profile directory: schemes,
+  absolute paths, and `../` traversal are never read or written.
 - Writing is JSON-only for now; XML write-back would reformat the whole
   document. Read tools support both formats.
 

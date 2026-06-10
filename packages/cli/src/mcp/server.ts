@@ -34,6 +34,10 @@ interface LoadedProfile {
   absPath: string;
 }
 
+/**
+ * Read, parse, and resolve an ALPS profile from disk.
+ * Always reads fresh so edits between tool calls are visible.
+ */
 async function loadProfile(file: string): Promise<LoadedProfile> {
   const absPath = path.resolve(file);
   if (!fs.existsSync(absPath)) {
@@ -47,10 +51,16 @@ async function loadProfile(file: string): Promise<LoadedProfile> {
   return { document, baseDir, absPath };
 }
 
+/**
+ * Split the space-separated tag attribute into a list
+ */
 function descriptorTags(desc: AlpsDescriptor): string[] {
   return (desc.tag || '').split(/\s+/).filter(Boolean);
 }
 
+/**
+ * Short doc excerpt for search results; external docs show their href
+ */
 function docPreview(desc: AlpsDescriptor): string | undefined {
   const text = docText(desc.doc);
   if (!text) {
@@ -60,6 +70,9 @@ function docPreview(desc: AlpsDescriptor): string | undefined {
   return text.length > DOC_PREVIEW_LENGTH ? `${text.slice(0, DOC_PREVIEW_LENGTH)}…` : text;
 }
 
+/**
+ * Compact descriptor summary returned by alps_search
+ */
 function summarize(desc: AlpsDescriptor) {
   const tags = descriptorTags(desc);
   const doc = docPreview(desc);
@@ -82,14 +95,23 @@ function allDescriptors(document: AlpsDocument): AlpsDescriptor[] {
   return result;
 }
 
+/**
+ * MCP tool result with pretty-printed JSON content
+ */
 function jsonResult(data: unknown) {
   return { content: [{ type: 'text' as const, text: JSON.stringify(data, null, 2) }] };
 }
 
+/**
+ * MCP tool result with plain text content
+ */
 function textResult(text: string) {
   return { content: [{ type: 'text' as const, text }] };
 }
 
+/**
+ * MCP tool error result
+ */
 function errorResult(error: unknown) {
   const message = error instanceof Error ? error.message : String(error);
   return { content: [{ type: 'text' as const, text: `Error: ${message}` }], isError: true };
@@ -97,6 +119,9 @@ function errorResult(error: unknown) {
 
 const fileParam = z.string().describe('Path to the ALPS profile file (JSON or XML)');
 
+/**
+ * Create the MCP server with all ALPS tools registered
+ */
 export function createServer(): McpServer {
   const server = new McpServer({ name: 'alps-asd', version: SERVER_VERSION });
 

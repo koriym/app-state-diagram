@@ -44,6 +44,21 @@ describe('extractGraph', () => {
   it('does not treat plain semantic descriptors as states', () => {
     expect(graph.states.find(s => s.id === 'price')).toBeUndefined();
   });
+
+  it('excludes transitions with external rt references', () => {
+    const doc: AlpsDocument = {
+      alps: {
+        descriptor: [
+          { id: 'Home', type: 'semantic', descriptor: [{ href: '#goExt' }, { href: '#goSelf' }] },
+          { id: 'goExt', type: 'safe', rt: 'other.json#Remote' },
+          { id: 'goSelf', type: 'safe', rt: '#Home' },
+        ],
+      },
+    };
+    const g = extractGraph(doc);
+    expect(g.transitions.map(t => t.id)).toEqual(['goSelf']);
+    expect(g.states.map(s => s.id)).toEqual(['Home']);
+  });
 });
 
 describe('findContainers', () => {

@@ -74,10 +74,13 @@ export function setDescriptorDoc(
     throw new Error(`Descriptor not found: ${id}`);
   }
 
+  const baseDir = path.dirname(absPath);
   const existingDoc: string | AlpsDoc | undefined = descriptor.doc;
   const existingHref =
     typeof existingDoc === 'object' && existingDoc?.href ? existingDoc.href : undefined;
-  const hasExternalDoc = existingHref !== undefined && isLocalHref(existingHref);
+  // Unsafe hrefs (absolute, ../ traversal, schemes) are never reused as write targets
+  const hasExternalDoc =
+    existingHref !== undefined && resolveSafeLocalPath(baseDir, existingHref) !== undefined;
 
   let external: boolean;
   if (placement === 'auto') {
@@ -86,13 +89,12 @@ export function setDescriptorDoc(
     external = placement === 'external';
   }
 
-  const baseDir = path.dirname(absPath);
   const result: SetDocResult = { id, placement: external ? 'external' : 'inline' };
 
   if (external) {
     // Reuse the existing local doc file location when present
     const docFile = hasExternalDoc ? existingHref! : `${DOC_DIR}/${safeFileName(id)}.md`;
-    const docFilePath = path.resolve(baseDir, docFile);
+    const docFilePath = resolveSafeLocalPath(baseDir, docFile)!;
     fs.mkdirSync(path.dirname(docFilePath), { recursive: true });
     fs.writeFileSync(docFilePath, doc.endsWith('\n') ? doc : `${doc}\n`, 'utf-8');
     const format =
@@ -133,20 +135,39 @@ export function resolveDoc(
   if (typeof doc === 'string') {
     return { text: doc };
   }
-  if (doc.href && isLocalHref(doc.href)) {
-    const docPath = path.resolve(baseDir, doc.href);
-    if (fs.existsSync(docPath)) {
+  if (doc.href) {
+    const docPath = resolveSafeLocalPath(baseDir, doc.href);
+    if (docPath && fs.existsSync(docPath)) {
       return { text: fs.readFileSync(docPath, 'utf-8'), href: doc.href, format: doc.format };
     }
-    return { text: doc.value || '', href: doc.href, format: doc.format };
   }
   return { text: doc.value || '', href: doc.href, format: doc.format };
 }
 
-function isLocalHref(href: string): boolean {
-  return !/^https?:\/\//.test(href);
+/**
+ * Resolve a doc href against the profile directory, rejecting anything
+ * that escapes it: URL schemes ("http:", "file:", Windows drives),
+ * protocol-relative or absolute paths, backslashes, and ../ traversal.
+ * Returns the absolute path, or undefined when the href is unsafe.
+ */
+function resolveSafeLocalPath(baseDir: string, href: string): string | undefined {
+  if (/^[a-zA-Z][a-zA-Z0-9+.-]*:/.test(href)) {
+    return undefined;
+  }
+  if (href.startsWith('//') || href.includes('\\') || path.isAbsolute(href)) {
+    return undefined;
+  }
+  const abs = path.resolve(baseDir, href);
+  const rel = path.relative(baseDir, abs);
+  if (rel.startsWith('..') || path.isAbsolute(rel)) {
+    return undefined;
+  }
+  return abs;
 }
 
+/**
+ * Turn a descriptor id into a safe file name for alps-doc/
+ */
 function safeFileName(id: string): string {
   return id.replace(/[^A-Za-z0-9._-]/g, '-');
 }

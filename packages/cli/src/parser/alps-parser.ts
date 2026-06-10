@@ -123,10 +123,14 @@ function xmlToAlpsObject(parsed: any): AlpsDocument {
   const result: AlpsDocument = {
     alps: {
       title: alps.title?.['#text'] || alps.title || 'ALPS Profile',
-      doc: convertDoc(alps.doc) || '',
       descriptor: descriptors,
     },
   };
+
+  const rootDoc = convertDoc(alps.doc);
+  if (rootDoc !== undefined) {
+    result.alps.doc = rootDoc;
+  }
 
   if (links.length > 0) {
     result.alps.link = links;
@@ -173,6 +177,17 @@ export function docText(doc: string | AlpsDoc | undefined): string {
     return doc;
   }
   return doc.value || '';
+}
+
+/**
+ * Extract a local fragment id from an href/rt reference.
+ * Returns null for external references ("file.json#id", "http://...").
+ */
+export function localFragment(ref: string | undefined): string | null {
+  if (!ref || !ref.startsWith('#')) {
+    return null;
+  }
+  return ref.substring(1);
 }
 
 /**

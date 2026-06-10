@@ -6,7 +6,7 @@
  * (E001-E011, W001-W004).
  */
 
-import { walkDescriptors } from '../parser/alps-parser';
+import { walkDescriptors, localFragment } from '../parser/alps-parser';
 import type { AlpsDocument } from '../parser/alps-parser';
 
 export interface ValidationIssue {
@@ -151,14 +151,4 @@ export function validateAlps(document: AlpsDocument): ValidationResult {
   }
 
   return { valid: errors.length === 0, errors, warnings };
-}
-
-/**
- * Extract a local fragment id from href/rt ("#id" or "file.json#id" -> null for external)
- */
-function localFragment(ref: string | undefined): string | null {
-  if (!ref || !ref.startsWith('#')) {
-    return null;
-  }
-  return ref.substring(1);
 }
