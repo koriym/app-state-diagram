@@ -303,7 +303,7 @@ server.setRequestHandler(ListToolsRequestSchema, async () => {
       {
         name: "alps_set_doc",
         description:
-          "Set or update the documentation of a descriptor in a JSON ALPS profile. " +
+          "Set or update the documentation of a descriptor in a JSON or XML ALPS profile. " +
           `Short single-line docs (<= ${INLINE_DOC_MAX_LENGTH} chars) are stored inline; ` +
           "longer or multi-line docs are automatically written to an external Markdown " +
           "file (alps/docs/<id>.md) and linked from the profile via doc.href. This keeps " +
@@ -335,13 +335,13 @@ server.setRequestHandler(ListToolsRequestSchema, async () => {
       },
       {
         name: "alps_add_descriptor",
-        description: "Add a new descriptor to a JSON ALPS profile. Containers reference children via href fragments; missing children are created as top-level semantic descriptors. Example: register name and age as person -> id: person, children: [name, age].",
+        description: "Add a new descriptor to a JSON or XML ALPS profile. Containers reference children via href fragments; missing children are created as top-level semantic descriptors. Example: register name and age as person -> id: person, children: [name, age].",
         inputSchema: {
           type: "object" as const,
           properties: {
             file: {
               type: "string",
-              description: "Path to the ALPS profile file (JSON only for writes)",
+              description: "Path to the ALPS profile file (JSON or XML)",
             },
             id: {
               type: "string",
@@ -384,13 +384,13 @@ server.setRequestHandler(ListToolsRequestSchema, async () => {
       {
         name: "alps_set_tags",
         description:
-          "Add and/or remove tags in a descriptor's space-separated tag attribute in a JSON ALPS profile. Kept tags preserve their order, new tags are appended, and the tag property is removed when it becomes empty.",
+          "Add and/or remove tags in a descriptor's space-separated tag attribute in a JSON or XML ALPS profile. Kept tags preserve their order, new tags are appended, and the tag property is removed when it becomes empty.",
         inputSchema: {
           type: "object" as const,
           properties: {
             file: {
               type: "string",
-              description: "Path to the ALPS profile file (JSON only for writes)",
+              description: "Path to the ALPS profile file (JSON or XML)",
             },
             id: {
               type: "string",
@@ -413,13 +413,13 @@ server.setRequestHandler(ListToolsRequestSchema, async () => {
       {
         name: "alps_rename",
         description:
-          "Rename a descriptor in a JSON ALPS profile and update all local references: href and rt #fragments at any nesting depth. External references (file.json#id) are left untouched. An external doc file (doc.href) keeps its old file name but stays linked.",
+          "Rename a descriptor in a JSON or XML ALPS profile and update all local references: href and rt #fragments at any nesting depth. External references (file.json#id) are left untouched. An external doc file (doc.href) keeps its old file name but stays linked.",
         inputSchema: {
           type: "object" as const,
           properties: {
             file: {
               type: "string",
-              description: "Path to the ALPS profile file (JSON only for writes)",
+              description: "Path to the ALPS profile file (JSON or XML)",
             },
             id: {
               type: "string",
@@ -565,7 +565,7 @@ export async function handleValidateAlps(args: Record<string, unknown> | undefin
 }
 
 /**
- * Add a new descriptor (optionally nested or with href children) to a JSON profile
+ * Add a new descriptor (optionally nested or with href children) to a JSON or XML profile
  */
 export async function handleAlpsAddDescriptor(args: Record<string, unknown> | undefined) {
   const file = args?.file as string | undefined;
@@ -612,7 +612,7 @@ export async function handleAlpsAddDescriptor(args: Record<string, unknown> | un
 }
 
 /**
- * Add and/or remove tags on a descriptor in a JSON profile
+ * Add and/or remove tags on a descriptor in a JSON or XML profile
  */
 export async function handleAlpsSetTags(args: Record<string, unknown> | undefined) {
   const file = args?.file as string | undefined;
@@ -640,7 +640,7 @@ export async function handleAlpsSetTags(args: Record<string, unknown> | undefine
 }
 
 /**
- * Rename a descriptor and update local #fragment references across a JSON profile
+ * Rename a descriptor and update local #fragment references across a JSON or XML profile
  */
 export async function handleAlpsRename(args: Record<string, unknown> | undefined) {
   const file = args?.file as string | undefined;

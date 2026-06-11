@@ -69,11 +69,8 @@ describe("addDescriptor", () => {
     expect(() => addDescriptor(profilePath, { id: "Home" })).toThrow("already exists");
   });
 
-  it("rejects unknown parents and XML profiles", () => {
+  it("rejects unknown parents", () => {
     expect(() => addDescriptor(profilePath, { id: "x", parent: "nope" })).toThrow("Parent descriptor not found");
-    const xml = path.join(dir, "p.xml");
-    fs.writeFileSync(xml, "<alps/>");
-    expect(() => addDescriptor(xml, { id: "x" })).toThrow("JSON profiles only");
   });
 
   it("preserves indentation", () => {
@@ -81,6 +78,38 @@ describe("addDescriptor", () => {
     const content = fs.readFileSync(profilePath, "utf-8");
     expect(content).toContain('\n  "alps"');
     expect(content.endsWith("\n")).toBe(true);
+  });
+
+  it("rejects missing files, invalid JSON, and missing alps roots", () => {
+    expect(() => addDescriptor(path.join(dir, "missing.json"), { id: "x" })).toThrow(
+      "Profile file not found"
+    );
+
+    fs.writeFileSync(profilePath, "{");
+    expect(() => addDescriptor(profilePath, { id: "x" })).toThrow("Invalid JSON format");
+
+    fs.writeFileSync(profilePath, JSON.stringify({ notAlps: {} }));
+    expect(() => addDescriptor(profilePath, { id: "x" })).toThrow("Missing alps property");
+  });
+
+  it("initializes a missing descriptor array and preserves optional fields", () => {
+    fs.writeFileSync(profilePath, JSON.stringify({ alps: {} }, null, 2) + "\n");
+
+    const result = addDescriptor(profilePath, {
+      id: "profile",
+      type: "semantic",
+      title: "Profile",
+      tag: "core",
+      rt: "https://example.com/alps#Profile",
+    });
+
+    expect(result).toEqual({ id: "profile", createdChildren: [], warnings: [] });
+    expect(read().alps.descriptor[0]).toEqual({
+      id: "profile",
+      title: "Profile",
+      tag: "core",
+      rt: "https://example.com/alps#Profile",
+    });
   });
 });
 
@@ -131,13 +160,10 @@ describe("setDescriptorTags", () => {
     );
   });
 
-  it("rejects unknown ids and XML profiles", () => {
+  it("rejects unknown ids", () => {
     expect(() => setDescriptorTags(profilePath, { id: "nope", add: ["x"] })).toThrow(
       "Descriptor not found"
     );
-    const xml = path.join(dir, "p.xml");
-    fs.writeFileSync(xml, "<alps/>");
-    expect(() => setDescriptorTags(xml, { id: "Home", add: ["x"] })).toThrow("JSON profiles only");
   });
 
   it("preserves indentation", () => {
@@ -145,6 +171,17 @@ describe("setDescriptorTags", () => {
     const content = fs.readFileSync(profilePath, "utf-8");
     expect(content).toContain('\n  "alps"');
     expect(content.endsWith("\n")).toBe(true);
+  });
+
+  it("rejects missing files and invalid JSON", () => {
+    expect(() => setDescriptorTags(path.join(dir, "missing.json"), { id: "Home", add: ["x"] })).toThrow(
+      "Profile file not found"
+    );
+
+    fs.writeFileSync(profilePath, "{");
+    expect(() => setDescriptorTags(profilePath, { id: "Home", add: ["x"] })).toThrow(
+      "Invalid JSON format"
+    );
   });
 });
 
@@ -207,16 +244,20 @@ describe("renameDescriptor", () => {
     );
   });
 
-  it("rejects XML profiles", () => {
-    const xml = path.join(dir, "p.xml");
-    fs.writeFileSync(xml, "<alps/>");
-    expect(() => renameDescriptor(xml, "Cart", "Basket")).toThrow("JSON profiles only");
-  });
-
   it("preserves indentation", () => {
     renameDescriptor(profilePath, "Cart", "Basket");
     const content = fs.readFileSync(profilePath, "utf-8");
     expect(content).toContain('\n  "alps"');
     expect(content.endsWith("\n")).toBe(true);
+  });
+
+  it("rejects empty new ids, missing files, and invalid JSON", () => {
+    expect(() => renameDescriptor(profilePath, "Cart", "")).toThrow("non-empty");
+    expect(() => renameDescriptor(path.join(dir, "missing.json"), "Cart", "Basket")).toThrow(
+      "Profile file not found"
+    );
+
+    fs.writeFileSync(profilePath, "{");
+    expect(() => renameDescriptor(profilePath, "Cart", "Basket")).toThrow("Invalid JSON format");
   });
 });

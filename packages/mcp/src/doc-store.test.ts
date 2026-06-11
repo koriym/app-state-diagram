@@ -8,6 +8,7 @@
 const {
   setDescriptorDoc,
   resolveDoc,
+  resolveSafeLocalPath,
   shouldExternalize,
   INLINE_DOC_MAX_LENGTH,
   DOC_DIR,
@@ -187,16 +188,22 @@ describe('setDescriptorDoc', () => {
     expect(() => setDescriptorDoc(profilePath, 'Nope', 'doc')).toThrow('Descriptor not found');
   });
 
-  it('rejects XML profiles', () => {
+  it('writes XML profiles', () => {
     const xmlPath = path.join(dir, 'profile.xml');
     fs.writeFileSync(xmlPath, '<alps><descriptor id="Home"/></alps>');
-    expect(() => setDescriptorDoc(xmlPath, 'Home', 'doc')).toThrow('JSON profiles only');
+    expect(setDescriptorDoc(xmlPath, 'Home', 'doc')).toEqual({ id: 'Home', placement: 'inline' });
+    expect(fs.readFileSync(xmlPath, 'utf-8')).toContain('<doc>doc</doc>');
   });
 
   it('rejects missing files', () => {
     expect(() => setDescriptorDoc(path.join(dir, 'none.json'), 'Home', 'doc')).toThrow(
       'Profile file not found'
     );
+  });
+
+  it('rejects invalid JSON profiles', () => {
+    fs.writeFileSync(profilePath, '{');
+    expect(() => setDescriptorDoc(profilePath, 'Home', 'doc')).toThrow('Invalid JSON format');
   });
 });
 
@@ -252,5 +259,9 @@ describe('resolveDoc', () => {
 
   it('returns undefined for missing docs', () => {
     expect(resolveDoc(dir, undefined)).toBeUndefined();
+  });
+
+  it('returns undefined when the base directory cannot be resolved', () => {
+    expect(resolveSafeLocalPath(path.join(dir, 'missing-base'), 'doc.md')).toBeUndefined();
   });
 });
