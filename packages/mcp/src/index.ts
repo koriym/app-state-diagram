@@ -11,6 +11,7 @@ import {
   CallToolRequestSchema,
   ListToolsRequestSchema,
 } from "@modelcontextprotocol/sdk/types.js";
+import type { ToolAnnotations } from "@modelcontextprotocol/sdk/types.js";
 import * as fs from "fs";
 import * as path from "path";
 import * as zlib from "zlib";
@@ -63,396 +64,435 @@ const server = new Server(
   }
 );
 
+// Tool definitions (annotations are added by listTools())
+export const TOOLS = [
+  {
+    name: "validate_alps",
+    description: "Validate ALPS profile and provide detailed error feedback",
+    inputSchema: {
+      type: "object" as const,
+      properties: {
+        alps_content: {
+          type: "string",
+          description: "ALPS profile XML or JSON content to validate",
+        },
+        vocabulary: {
+          type: "string",
+          description:
+            "Path to a tag vocabulary file (tags.html with tags as <dt> ids, see docs/tag-vocabulary.md). Tags used in the profile but not defined there are reported as W005 warnings.",
+        },
+      },
+      required: ["alps_content"],
+    },
+  },
+  {
+    name: "alps2svg",
+    description: "Convert ALPS profile to SVG state diagram",
+    inputSchema: {
+      type: "object" as const,
+      properties: {
+        alps_content: {
+          type: "string",
+          description: "ALPS profile content (XML or JSON format)",
+        },
+        alps_path: {
+          type: "string",
+          description: "Path to ALPS profile file (alternative to alps_content)",
+        },
+        tag: {
+          type: "string",
+          description: "Filter the diagram to descriptors with these tags (space- or comma-separated). Shows the induced subgraph: tagged nodes plus endpoints of tagged transitions.",
+        },
+        output: {
+          type: "string",
+          description: "Write the SVG to this file path and return the path instead of inline SVG (recommended for large diagrams)",
+        },
+      },
+    },
+  },
+  {
+    name: "alps2mermaid",
+    description: "Convert ALPS profile to Mermaid classDiagram format (GitHub/VSCode compatible)",
+    inputSchema: {
+      type: "object" as const,
+      properties: {
+        alps_content: {
+          type: "string",
+          description: "ALPS profile content (XML or JSON format)",
+        },
+        alps_path: {
+          type: "string",
+          description: "Path to ALPS profile file (alternative to alps_content)",
+        },
+        tag: {
+          type: "string",
+          description: "Filter the diagram to descriptors with these tags (space- or comma-separated). Shows the induced subgraph: tagged nodes plus endpoints of tagged transitions.",
+        },
+      },
+    },
+  },
+  {
+    name: "alps_guide",
+    description: "Get ALPS best practices and reference guide",
+    inputSchema: {
+      type: "object" as const,
+      properties: {},
+    },
+  },
+  {
+    name: "alps_editor_url",
+    description: "Create a shareable ALPS Editor URL from an ALPS profile file",
+    inputSchema: {
+      type: "object" as const,
+      properties: {
+        file: {
+          type: "string",
+          description: "Path to ALPS profile file (XML or JSON)",
+        },
+      },
+      required: ["file"],
+    },
+  },
+  {
+    name: "crawl_and_extract_alps",
+    description: "Crawl website and extract ALPS profile using efficient pattern-based analysis",
+    inputSchema: {
+      type: "object" as const,
+      properties: {
+        url: {
+          type: "string",
+          description: "Starting URL to crawl (e.g., https://example.com)",
+        },
+        max_depth: {
+          type: "number",
+          description: "Maximum crawl depth (default: 3)",
+        },
+        exclude_patterns: {
+          type: "array",
+          description: "URL patterns to exclude (regex strings)",
+          items: {
+            type: "string",
+          },
+        },
+      },
+      required: ["url"],
+    },
+  },
+  {
+    name: "validate_openapi",
+    description: "Validate OpenAPI specification using Spectral linter",
+    inputSchema: {
+      type: "object" as const,
+      properties: {
+        openapi_content: {
+          type: "string",
+          description: "OpenAPI specification content (YAML or JSON)",
+        },
+        openapi_path: {
+          type: "string",
+          description: "Path to OpenAPI file (alternative to openapi_content)",
+        },
+      },
+    },
+  },
+  {
+    name: "alps_overview",
+    description:
+      "Summarize an ALPS profile: title, application states, transitions (with from/to states), and tags. Use this first to understand the application state model.",
+    inputSchema: {
+      type: "object" as const,
+      properties: {
+        file: {
+          type: "string",
+          description: "Path to the ALPS profile file (JSON or XML)",
+        },
+      },
+      required: ["file"],
+    },
+  },
+  {
+    name: "alps_search",
+    description:
+      "Filter descriptors in an ALPS profile by type, tag, and/or free text (matched against id, title, and doc, including docs externalized to alps/docs/<id>.md). Returns compact summaries.",
+    inputSchema: {
+      type: "object" as const,
+      properties: {
+        file: {
+          type: "string",
+          description: "Path to the ALPS profile file (JSON or XML)",
+        },
+        type: {
+          type: "string",
+          enum: ["semantic", "safe", "unsafe", "idempotent"],
+          description: "Filter by descriptor type",
+        },
+        tag: {
+          type: "string",
+          description: "Filter by tag(s), space- or comma-separated (OR match against the descriptor's space-separated tags)",
+        },
+        text: {
+          type: "string",
+          description: "Case-insensitive text search in id, title, and doc",
+        },
+        format: {
+          type: "string",
+          enum: ["json", "markdown"],
+          description: "Output format: json (default) or a Markdown table (ID, Type, Title, Tags, Doc) for direct display in chat",
+        },
+      },
+      required: ["file"],
+    },
+  },
+  {
+    name: "alps_tags",
+    description:
+      "List the tags in use across an ALPS profile, grouped by facet (actor/flow/feature/src/page prefix, else domain) with usage counts. Given a vocabulary file (tags.html, see docs/tag-vocabulary.md), each tag is joined with its definition (defined, title).",
+    inputSchema: {
+      type: "object" as const,
+      properties: {
+        file: {
+          type: "string",
+          description: "Path to the ALPS profile file (JSON or XML)",
+        },
+        vocabulary: {
+          type: "string",
+          description: "Path to a tag vocabulary file (tags.html with tags as <dt> ids, see docs/tag-vocabulary.md)",
+        },
+        format: {
+          type: "string",
+          enum: ["json", "markdown"],
+          description: "Output format: json (default) or a Markdown table (Tag, Facet, Count, Defined, Title) for direct display in chat",
+        },
+      },
+      required: ["file"],
+    },
+  },
+  {
+    name: "alps_descriptor",
+    description:
+      "Get full details of one descriptor: definition, resolved documentation and rel=\"describedby\" links (local files are read and inlined; http(s) links are returned unresolved), containing states, and incoming/outgoing transitions.",
+    inputSchema: {
+      type: "object" as const,
+      properties: {
+        file: {
+          type: "string",
+          description: "Path to the ALPS profile file (JSON or XML)",
+        },
+        id: {
+          type: "string",
+          description: "Descriptor id",
+        },
+      },
+      required: ["file", "id"],
+    },
+  },
+  {
+    name: "alps_paths",
+    description:
+      "Enumerate transition paths from one application state to another, e.g. all ways a user can get from Home to OrderConfirmation.",
+    inputSchema: {
+      type: "object" as const,
+      properties: {
+        file: {
+          type: "string",
+          description: "Path to the ALPS profile file (JSON or XML)",
+        },
+        from: {
+          type: "string",
+          description: "Starting state id",
+        },
+        to: {
+          type: "string",
+          description: "Target state id",
+        },
+        maxPaths: {
+          type: "number",
+          minimum: 1,
+          maximum: 50,
+          description: "Maximum paths (default 10)",
+        },
+      },
+      required: ["file", "from", "to"],
+    },
+  },
+  {
+    name: "alps_set_doc",
+    description:
+      "Set or update the documentation of a descriptor in a JSON or XML ALPS profile. " +
+      `Short single-line docs (<= ${INLINE_DOC_MAX_LENGTH} chars) are stored inline; ` +
+      "longer or multi-line docs are automatically written to an external Markdown " +
+      "file (alps/docs/<id>.md) and linked from the profile via doc.href. This keeps " +
+      "the profile compact, so feel free to write rich, detailed Markdown " +
+      "documentation describing the meaning of the state and related information.",
+    inputSchema: {
+      type: "object" as const,
+      properties: {
+        file: {
+          type: "string",
+          description: "Path to the ALPS profile file (JSON or XML)",
+        },
+        id: {
+          type: "string",
+          description: "Descriptor id",
+        },
+        doc: {
+          type: "string",
+          description: "Documentation text (Markdown welcome for external docs)",
+        },
+        placement: {
+          type: "string",
+          enum: ["auto", "inline", "external"],
+          description: "Storage placement (default: auto - the server decides by size)",
+        },
+      },
+      required: ["file", "id", "doc"],
+    },
+  },
+  {
+    name: "alps_add_descriptor",
+    description: "Add a new descriptor to a JSON or XML ALPS profile. Containers reference children via href fragments; missing children are created as top-level semantic descriptors. Example: register name and age as person -> id: person, children: [name, age].",
+    inputSchema: {
+      type: "object" as const,
+      properties: {
+        file: {
+          type: "string",
+          description: "Path to the ALPS profile file (JSON or XML)",
+        },
+        id: {
+          type: "string",
+          description: "New descriptor id",
+        },
+        type: {
+          type: "string",
+          enum: ["semantic", "safe", "unsafe", "idempotent"],
+          description: "Descriptor type (default: semantic)",
+        },
+        title: {
+          type: "string",
+          description: "Human-readable title",
+        },
+        doc: {
+          type: "string",
+          description: "Documentation; long or multi-line docs are auto-externalized to alps/docs/<id>.md",
+        },
+        rt: {
+          type: "string",
+          description: "Transition target state id (for safe/unsafe/idempotent); bare ids are normalized to #fragments",
+        },
+        tag: {
+          type: "string",
+          description: "Space-separated tags",
+        },
+        children: {
+          type: "array",
+          items: { type: "string" },
+          description: "Child descriptor ids, referenced as href fragments; missing ones are created as semantic leaf descriptors",
+        },
+        parent: {
+          type: "string",
+          description: "Existing descriptor that should contain the new one (e.g. the state offering a transition). The new descriptor is defined at the top level and referenced from the parent via an href fragment; a transition then appears in diagrams when it has an rt, and in overview and paths when that rt is local (#id). A transition's parent must be a top-level state",
+        },
+      },
+      required: ["file", "id"],
+    },
+  },
+  {
+    name: "alps_set_tags",
+    description:
+      "Add and/or remove tags in a descriptor's space-separated tag attribute in a JSON or XML ALPS profile. Kept tags preserve their order, new tags are appended, and the tag property is removed when it becomes empty.",
+    inputSchema: {
+      type: "object" as const,
+      properties: {
+        file: {
+          type: "string",
+          description: "Path to the ALPS profile file (JSON or XML)",
+        },
+        id: {
+          type: "string",
+          description: "Descriptor id",
+        },
+        add: {
+          type: "array",
+          items: { type: "string" },
+          description: "Tags to add (ones already present are ignored)",
+        },
+        remove: {
+          type: "array",
+          items: { type: "string" },
+          description: "Tags to remove (at least one of add/remove is required)",
+        },
+      },
+      required: ["file", "id"],
+    },
+  },
+  {
+    name: "alps_rename",
+    description:
+      "Rename a descriptor in a JSON or XML ALPS profile and update all local references: href and rt #fragments at any nesting depth. External references (file.json#id) are left untouched. An external doc file (doc.href) keeps its old file name but stays linked.",
+    inputSchema: {
+      type: "object" as const,
+      properties: {
+        file: {
+          type: "string",
+          description: "Path to the ALPS profile file (JSON or XML)",
+        },
+        id: {
+          type: "string",
+          description: "Current descriptor id",
+        },
+        newId: {
+          type: "string",
+          description: "New descriptor id",
+        },
+      },
+      required: ["file", "id", "newId"],
+    },
+  },
+];
+
+/**
+ * MCP tool annotations: how each tool affects its environment, so a client
+ * can tell which calls only read and which change files (and may need
+ * confirmation). The same distinction ALPS makes with safe, unsafe and
+ * idempotent, applied to the server's own tools.
+ */
+const READ_ONLY: ToolAnnotations = { readOnlyHint: true, openWorldHint: false };
+export const TOOL_ANNOTATIONS: Record<string, ToolAnnotations> = {
+  validate_alps: READ_ONLY,
+  // Writes the SVG to `output` when given, replacing an existing file
+  alps2svg: { readOnlyHint: false, destructiveHint: true, idempotentHint: true, openWorldHint: false },
+  alps2mermaid: READ_ONLY,
+  alps_guide: READ_ONLY,
+  alps_editor_url: READ_ONLY,
+  // Meant to fetch websites
+  crawl_and_extract_alps: { readOnlyHint: true, openWorldHint: true },
+  // Runs the Spectral CLI through npx, which may download it
+  validate_openapi: { readOnlyHint: true, openWorldHint: true },
+  alps_overview: READ_ONLY,
+  alps_search: READ_ONLY,
+  alps_tags: READ_ONLY,
+  alps_descriptor: READ_ONLY,
+  alps_paths: READ_ONLY,
+  // Replaces a descriptor's doc
+  alps_set_doc: { readOnlyHint: false, destructiveHint: true, idempotentHint: true, openWorldHint: false },
+  // Only adds; repeating the call is rejected without changes
+  alps_add_descriptor: { readOnlyHint: false, destructiveHint: false, idempotentHint: true, openWorldHint: false },
+  // Can remove tags
+  alps_set_tags: { readOnlyHint: false, destructiveHint: true, idempotentHint: true, openWorldHint: false },
+  // Changes ids and the references to them
+  alps_rename: { readOnlyHint: false, destructiveHint: true, idempotentHint: true, openWorldHint: false },
+};
+
+/**
+ * The tool list served by tools/list, with each tool's annotations
+ */
+export function listTools() {
+  return TOOLS.map((tool) => ({ ...tool, annotations: TOOL_ANNOTATIONS[tool.name] }));
+}
+
 // List available tools
 /* istanbul ignore next -- MCP framework handler not testable in unit tests */
-server.setRequestHandler(ListToolsRequestSchema, async () => {
-  return {
-    tools: [
-      {
-        name: "validate_alps",
-        description: "Validate ALPS profile and provide detailed error feedback",
-        inputSchema: {
-          type: "object" as const,
-          properties: {
-            alps_content: {
-              type: "string",
-              description: "ALPS profile XML or JSON content to validate",
-            },
-            vocabulary: {
-              type: "string",
-              description:
-                "Path to a tag vocabulary file (tags.html with tags as <dt> ids, see docs/tag-vocabulary.md). Tags used in the profile but not defined there are reported as W005 warnings.",
-            },
-          },
-          required: ["alps_content"],
-        },
-      },
-      {
-        name: "alps2svg",
-        description: "Convert ALPS profile to SVG state diagram",
-        inputSchema: {
-          type: "object" as const,
-          properties: {
-            alps_content: {
-              type: "string",
-              description: "ALPS profile content (XML or JSON format)",
-            },
-            alps_path: {
-              type: "string",
-              description: "Path to ALPS profile file (alternative to alps_content)",
-            },
-            tag: {
-              type: "string",
-              description: "Filter the diagram to descriptors with these tags (space- or comma-separated). Shows the induced subgraph: tagged nodes plus endpoints of tagged transitions.",
-            },
-            output: {
-              type: "string",
-              description: "Write the SVG to this file path and return the path instead of inline SVG (recommended for large diagrams)",
-            },
-          },
-        },
-      },
-      {
-        name: "alps2mermaid",
-        description: "Convert ALPS profile to Mermaid classDiagram format (GitHub/VSCode compatible)",
-        inputSchema: {
-          type: "object" as const,
-          properties: {
-            alps_content: {
-              type: "string",
-              description: "ALPS profile content (XML or JSON format)",
-            },
-            alps_path: {
-              type: "string",
-              description: "Path to ALPS profile file (alternative to alps_content)",
-            },
-            tag: {
-              type: "string",
-              description: "Filter the diagram to descriptors with these tags (space- or comma-separated). Shows the induced subgraph: tagged nodes plus endpoints of tagged transitions.",
-            },
-          },
-        },
-      },
-      {
-        name: "alps_guide",
-        description: "Get ALPS best practices and reference guide",
-        inputSchema: {
-          type: "object" as const,
-          properties: {},
-        },
-      },
-      {
-        name: "alps_editor_url",
-        description: "Create a shareable ALPS Editor URL from an ALPS profile file",
-        inputSchema: {
-          type: "object" as const,
-          properties: {
-            file: {
-              type: "string",
-              description: "Path to ALPS profile file (XML or JSON)",
-            },
-          },
-          required: ["file"],
-        },
-      },
-      {
-        name: "crawl_and_extract_alps",
-        description: "Crawl website and extract ALPS profile using efficient pattern-based analysis",
-        inputSchema: {
-          type: "object" as const,
-          properties: {
-            url: {
-              type: "string",
-              description: "Starting URL to crawl (e.g., https://example.com)",
-            },
-            max_depth: {
-              type: "number",
-              description: "Maximum crawl depth (default: 3)",
-            },
-            exclude_patterns: {
-              type: "array",
-              description: "URL patterns to exclude (regex strings)",
-              items: {
-                type: "string",
-              },
-            },
-          },
-          required: ["url"],
-        },
-      },
-      {
-        name: "validate_openapi",
-        description: "Validate OpenAPI specification using Spectral linter",
-        inputSchema: {
-          type: "object" as const,
-          properties: {
-            openapi_content: {
-              type: "string",
-              description: "OpenAPI specification content (YAML or JSON)",
-            },
-            openapi_path: {
-              type: "string",
-              description: "Path to OpenAPI file (alternative to openapi_content)",
-            },
-          },
-        },
-      },
-      {
-        name: "alps_overview",
-        description:
-          "Summarize an ALPS profile: title, application states, transitions (with from/to states), and tags. Use this first to understand the application state model.",
-        inputSchema: {
-          type: "object" as const,
-          properties: {
-            file: {
-              type: "string",
-              description: "Path to the ALPS profile file (JSON or XML)",
-            },
-          },
-          required: ["file"],
-        },
-      },
-      {
-        name: "alps_search",
-        description:
-          "Filter descriptors in an ALPS profile by type, tag, and/or free text (matched against id, title, and doc, including docs externalized to alps/docs/<id>.md). Returns compact summaries.",
-        inputSchema: {
-          type: "object" as const,
-          properties: {
-            file: {
-              type: "string",
-              description: "Path to the ALPS profile file (JSON or XML)",
-            },
-            type: {
-              type: "string",
-              enum: ["semantic", "safe", "unsafe", "idempotent"],
-              description: "Filter by descriptor type",
-            },
-            tag: {
-              type: "string",
-              description: "Filter by tag(s), space- or comma-separated (OR match against the descriptor's space-separated tags)",
-            },
-            text: {
-              type: "string",
-              description: "Case-insensitive text search in id, title, and doc",
-            },
-            format: {
-              type: "string",
-              enum: ["json", "markdown"],
-              description: "Output format: json (default) or a Markdown table (ID, Type, Title, Tags, Doc) for direct display in chat",
-            },
-          },
-          required: ["file"],
-        },
-      },
-      {
-        name: "alps_tags",
-        description:
-          "List the tags in use across an ALPS profile, grouped by facet (actor/flow/feature/src/page prefix, else domain) with usage counts. Given a vocabulary file (tags.html, see docs/tag-vocabulary.md), each tag is joined with its definition (defined, title).",
-        inputSchema: {
-          type: "object" as const,
-          properties: {
-            file: {
-              type: "string",
-              description: "Path to the ALPS profile file (JSON or XML)",
-            },
-            vocabulary: {
-              type: "string",
-              description: "Path to a tag vocabulary file (tags.html with tags as <dt> ids, see docs/tag-vocabulary.md)",
-            },
-            format: {
-              type: "string",
-              enum: ["json", "markdown"],
-              description: "Output format: json (default) or a Markdown table (Tag, Facet, Count, Defined, Title) for direct display in chat",
-            },
-          },
-          required: ["file"],
-        },
-      },
-      {
-        name: "alps_descriptor",
-        description:
-          "Get full details of one descriptor: definition, resolved documentation and rel=\"describedby\" links (local files are read and inlined; http(s) links are returned unresolved), containing states, and incoming/outgoing transitions.",
-        inputSchema: {
-          type: "object" as const,
-          properties: {
-            file: {
-              type: "string",
-              description: "Path to the ALPS profile file (JSON or XML)",
-            },
-            id: {
-              type: "string",
-              description: "Descriptor id",
-            },
-          },
-          required: ["file", "id"],
-        },
-      },
-      {
-        name: "alps_paths",
-        description:
-          "Enumerate transition paths from one application state to another, e.g. all ways a user can get from Home to OrderConfirmation.",
-        inputSchema: {
-          type: "object" as const,
-          properties: {
-            file: {
-              type: "string",
-              description: "Path to the ALPS profile file (JSON or XML)",
-            },
-            from: {
-              type: "string",
-              description: "Starting state id",
-            },
-            to: {
-              type: "string",
-              description: "Target state id",
-            },
-            maxPaths: {
-              type: "number",
-              minimum: 1,
-              maximum: 50,
-              description: "Maximum paths (default 10)",
-            },
-          },
-          required: ["file", "from", "to"],
-        },
-      },
-      {
-        name: "alps_set_doc",
-        description:
-          "Set or update the documentation of a descriptor in a JSON or XML ALPS profile. " +
-          `Short single-line docs (<= ${INLINE_DOC_MAX_LENGTH} chars) are stored inline; ` +
-          "longer or multi-line docs are automatically written to an external Markdown " +
-          "file (alps/docs/<id>.md) and linked from the profile via doc.href. This keeps " +
-          "the profile compact, so feel free to write rich, detailed Markdown " +
-          "documentation describing the meaning of the state and related information.",
-        inputSchema: {
-          type: "object" as const,
-          properties: {
-            file: {
-              type: "string",
-              description: "Path to the ALPS profile file (JSON or XML)",
-            },
-            id: {
-              type: "string",
-              description: "Descriptor id",
-            },
-            doc: {
-              type: "string",
-              description: "Documentation text (Markdown welcome for external docs)",
-            },
-            placement: {
-              type: "string",
-              enum: ["auto", "inline", "external"],
-              description: "Storage placement (default: auto - the server decides by size)",
-            },
-          },
-          required: ["file", "id", "doc"],
-        },
-      },
-      {
-        name: "alps_add_descriptor",
-        description: "Add a new descriptor to a JSON or XML ALPS profile. Containers reference children via href fragments; missing children are created as top-level semantic descriptors. Example: register name and age as person -> id: person, children: [name, age].",
-        inputSchema: {
-          type: "object" as const,
-          properties: {
-            file: {
-              type: "string",
-              description: "Path to the ALPS profile file (JSON or XML)",
-            },
-            id: {
-              type: "string",
-              description: "New descriptor id",
-            },
-            type: {
-              type: "string",
-              enum: ["semantic", "safe", "unsafe", "idempotent"],
-              description: "Descriptor type (default: semantic)",
-            },
-            title: {
-              type: "string",
-              description: "Human-readable title",
-            },
-            doc: {
-              type: "string",
-              description: "Documentation; long or multi-line docs are auto-externalized to alps/docs/<id>.md",
-            },
-            rt: {
-              type: "string",
-              description: "Transition target state id (for safe/unsafe/idempotent); bare ids are normalized to #fragments",
-            },
-            tag: {
-              type: "string",
-              description: "Space-separated tags",
-            },
-            children: {
-              type: "array",
-              items: { type: "string" },
-              description: "Child descriptor ids, referenced as href fragments; missing ones are created as semantic leaf descriptors",
-            },
-            parent: {
-              type: "string",
-              description: "Existing descriptor that should contain the new one (e.g. the state offering a transition). The new descriptor is defined at the top level and referenced from the parent via an href fragment; a transition then appears in diagrams when it has an rt, and in overview and paths when that rt is local (#id). A transition's parent must be a top-level state",
-            },
-          },
-          required: ["file", "id"],
-        },
-      },
-      {
-        name: "alps_set_tags",
-        description:
-          "Add and/or remove tags in a descriptor's space-separated tag attribute in a JSON or XML ALPS profile. Kept tags preserve their order, new tags are appended, and the tag property is removed when it becomes empty.",
-        inputSchema: {
-          type: "object" as const,
-          properties: {
-            file: {
-              type: "string",
-              description: "Path to the ALPS profile file (JSON or XML)",
-            },
-            id: {
-              type: "string",
-              description: "Descriptor id",
-            },
-            add: {
-              type: "array",
-              items: { type: "string" },
-              description: "Tags to add (ones already present are ignored)",
-            },
-            remove: {
-              type: "array",
-              items: { type: "string" },
-              description: "Tags to remove (at least one of add/remove is required)",
-            },
-          },
-          required: ["file", "id"],
-        },
-      },
-      {
-        name: "alps_rename",
-        description:
-          "Rename a descriptor in a JSON or XML ALPS profile and update all local references: href and rt #fragments at any nesting depth. External references (file.json#id) are left untouched. An external doc file (doc.href) keeps its old file name but stays linked.",
-        inputSchema: {
-          type: "object" as const,
-          properties: {
-            file: {
-              type: "string",
-              description: "Path to the ALPS profile file (JSON or XML)",
-            },
-            id: {
-              type: "string",
-              description: "Current descriptor id",
-            },
-            newId: {
-              type: "string",
-              description: "New descriptor id",
-            },
-          },
-          required: ["file", "id", "newId"],
-        },
-      },
-    ],
-  };
-});
+server.setRequestHandler(ListToolsRequestSchema, async () => ({ tools: listTools() }));
 
 // Handle tool calls
 /* istanbul ignore next -- MCP framework handler not testable in unit tests */
@@ -517,23 +557,30 @@ export async function handleValidateAlps(args: Record<string, unknown> | undefin
     const result = validator.validate(document);
 
     // Check used tags against the vocabulary file (docs/tag-vocabulary.md)
+    // Each unknown tag reports how many descriptors carry it, so a renamed
+    // tag facet (old tag unknown on many descriptors, new tag defined but
+    // unused) stands out instead of silently emptying filtered views
     let unusedDefinedTags: string[] = [];
     if (vocabularyPath) {
       const vocabulary = loadTagVocabulary(vocabularyPath);
-      const usedTags = new Set<string>();
+      const tagUsers = new Map<string, string[]>();
       for (const desc of allDescriptors(document)) {
-        descriptorTags(desc).forEach((tag) => usedTags.add(tag));
+        for (const tag of descriptorTags(desc)) {
+          const users = tagUsers.get(tag) ?? [];
+          users.push(desc.id ?? desc.href ?? "(anonymous)");
+          tagUsers.set(tag, users);
+        }
       }
-      for (const tag of [...usedTags].sort()) {
+      for (const tag of [...tagUsers.keys()].sort()) {
         if (!vocabulary.has(tag)) {
           result.warnings.push({
             code: "W005",
             severity: "warning",
-            message: `Unknown tag "${tag}" (not defined in ${vocabularyPath})`,
+            message: `Unknown tag "${tag}" (not defined in ${vocabularyPath}) on ${describeUsers(tagUsers.get(tag)!)}`,
           });
         }
       }
-      unusedDefinedTags = [...vocabulary.keys()].filter((tag) => !usedTags.has(tag)).sort();
+      unusedDefinedTags = [...vocabulary.keys()].filter((tag) => !tagUsers.has(tag)).sort();
     }
 
     const lines: string[] = [];
@@ -581,6 +628,17 @@ export async function handleValidateAlps(args: Record<string, unknown> | undefin
       isError: true,
     };
   }
+}
+
+const MAX_LISTED_IDS = 5;
+
+/**
+ * "1 descriptor: a" / "142 descriptors: a, b, c, d, e, …"
+ */
+function describeUsers(ids: string[]): string {
+  const listed = ids.slice(0, MAX_LISTED_IDS).join(", ");
+  const more = ids.length > MAX_LISTED_IDS ? ", …" : "";
+  return `${ids.length} descriptor${ids.length === 1 ? "" : "s"}: ${listed}${more}`;
 }
 
 export function createAlpsEditorUrl(alpsContent: string): string {
@@ -779,7 +837,7 @@ function descriptorsToMarkdownTable(
 function resolveTagFilter(
   document: AlpsDocument,
   tagParam: string | undefined
-): { filterIds: Set<string> | null; error?: string } {
+): { filterIds: Set<string> | null; error?: string; summary?: string } {
   if (!tagParam) {
     return { filterIds: null };
   }
@@ -791,7 +849,10 @@ function resolveTagFilter(
   if (filterIds.size === 0) {
     return { filterIds, error: `No descriptors match tag(s): ${tags.join(", ")}` };
   }
-  return { filterIds };
+  // The count makes a slice that shrank (e.g. after a tag rename) visible
+  const total = allDescriptors(document).filter((d) => d.id).length;
+  const summary = ` (tag filter ${tags.join(", ")}: ${filterIds.size} of ${total} descriptors tagged)`;
+  return { filterIds, summary };
 }
 
 export async function handleAlps2Svg(args: Record<string, unknown> | undefined) {
@@ -818,7 +879,7 @@ export async function handleAlps2Svg(args: Record<string, unknown> | undefined) 
 
   try {
     const document = parseAlpsAuto(alpsContent);
-    const { filterIds, error } = resolveTagFilter(document, args?.tag as string | undefined);
+    const { filterIds, error, summary = "" } = resolveTagFilter(document, args?.tag as string | undefined);
     if (error) {
       return { content: [{ type: "text", text: error }], isError: true };
     }
@@ -834,12 +895,12 @@ export async function handleAlps2Svg(args: Record<string, unknown> | undefined) 
       fs.mkdirSync(path.dirname(outPath), { recursive: true });
       fs.writeFileSync(outPath, svg, "utf-8");
       return {
-        content: [{ type: "text", text: `✅ SVG written to ${outPath} (${svg.length} bytes)` }],
+        content: [{ type: "text", text: `✅ SVG written to ${outPath} (${svg.length} bytes)${summary}` }],
       };
     }
 
     return {
-      content: [{ type: "text", text: `✅ SVG generated (${svg.length} bytes)\n\n\`\`\`svg\n${svg}\n\`\`\`` }],
+      content: [{ type: "text", text: `✅ SVG generated (${svg.length} bytes)${summary}\n\n\`\`\`svg\n${svg}\n\`\`\`` }],
       isError: false,
     };
   } catch (error) {
@@ -876,7 +937,7 @@ export async function handleAlps2Mermaid(args: Record<string, unknown> | undefin
 
   try {
     const document = parseAlpsAuto(alpsContent);
-    const { filterIds, error } = resolveTagFilter(document, args?.tag as string | undefined);
+    const { filterIds, error, summary = "" } = resolveTagFilter(document, args?.tag as string | undefined);
     if (error) {
       return { content: [{ type: "text", text: error }], isError: true };
     }
@@ -886,7 +947,7 @@ export async function handleAlps2Mermaid(args: Record<string, unknown> | undefin
     }
 
     return {
-      content: [{ type: "text", text: `✅ Mermaid classDiagram generated\n\n\`\`\`mermaid\n${mermaid}\`\`\`` }],
+      content: [{ type: "text", text: `✅ Mermaid classDiagram generated${summary}\n\n\`\`\`mermaid\n${mermaid}\`\`\`` }],
       isError: false,
     };
   } catch (error) {

@@ -50,6 +50,15 @@ function expectXmlEquivalentTo(expected: string): void {
 }
 
 describe("XML write support", () => {
+  it("never overwrites an existing doc file when externalizing an XML doc", () => {
+    fs.mkdirSync(path.join(dir, DOC_DIR), { recursive: true });
+    fs.writeFileSync(path.join(dir, DOC_DIR, "shared.md"), "Another descriptor's doc\n");
+
+    expect(setDescriptorDoc(profilePath, "shared", "# Shared\n\nNew doc.").docFile).toBe(`${DOC_DIR}/shared-2.md`);
+    expect(fs.readFileSync(path.join(dir, DOC_DIR, "shared.md"), "utf-8")).toBe("Another descriptor's doc\n");
+    expect(readXml()).toContain('href="alps/docs/shared-2.md"');
+  });
+
   it("sets descriptor docs in XML and externalizes long docs", () => {
     const doc = "# Shared\n\nDetailed documentation.";
     expect(setDescriptorDoc(profilePath, "shared", doc)).toEqual({ id: "shared", placement: "external", docFile: `${DOC_DIR}/shared.md` });
@@ -207,6 +216,12 @@ describe("XML write support", () => {
       '</alps>',
       '  <descriptor id="person"><descriptor href="#Cart"/><descriptor href="#person"/></descriptor>\n</alps>'
     ));
+  });
+
+  it("warns when an XML rt names a transition instead of a state", () => {
+    expect(addDescriptor(profilePath, { id: "goBack", type: "safe", rt: "goCart" }).warnings).toEqual([
+      'rt target "#goCart" is a transition, not a state (W007)',
+    ]);
   });
 
   it("normalizes rt fragments and warns about missing XML targets", () => {

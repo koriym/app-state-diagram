@@ -346,6 +346,40 @@ describe('AlpsValidator', () => {
     });
   });
 
+  describe('W007 - rt points to a transition', () => {
+    it('should warn when rt names another transition', () => {
+      const alps = {
+        alps: {
+          descriptor: [
+            { id: 'Home', descriptor: [{ href: '#goCart' }] },
+            { id: 'goHome', type: 'safe', rt: '#Home' },
+            { id: 'goCart', type: 'safe', rt: '#goHome' }
+          ]
+        }
+      };
+      const result = validator.validate(alps);
+      const w007 = result.warnings.filter(w => w.code === 'W007');
+      expect(w007).toHaveLength(1);
+      expect(w007[0]).toMatchObject({ id: 'goCart', path: 'alps.descriptor[2]' });
+      expect(w007[0].message).toBe('rt of "goCart" points to the transition #goHome; rt should name the state the transition leads to');
+      expect(result.isValid).toBe(true);
+    });
+
+    it('should not warn for rt to a state, and not carry over between validations', () => {
+      const alps = {
+        alps: {
+          descriptor: [
+            { id: 'Home', descriptor: [{ href: '#goHome' }] },
+            { id: 'goHome', type: 'safe', rt: '#Home' }
+          ]
+        }
+      };
+      validator.validate({ alps: { descriptor: [{ id: 'Home', type: 'safe', rt: '#x' }, { id: 'x' }] } });
+      const result = validator.validate(alps);
+      expect(result.warnings.filter(w => w.code === 'W007')).toHaveLength(0);
+    });
+  });
+
   describe('isValid', () => {
     it('should be true when no errors', () => {
       const alps = {

@@ -21,6 +21,7 @@ This page documents all validation errors, warnings, and suggestions reported by
 - [W004](#w004) Orphan descriptor
 - [W005](#w005) Unknown tag
 - [W006](#w006) Transition defined inside another descriptor
+- [W007](#w007) rt points to a transition
 
 **Suggestions**
 - [S001](#s001) Add doc to transition
@@ -216,6 +217,19 @@ This page documents all validation errors, warnings, and suggestions reported by
 - }
 + },
 + { "id": "doCheckout", "type": "unsafe", "rt": "#Done" }
+```
+
+---
+
+<a id="w007"></a>
+### W007: rt points to a transition
+
+**Why:** `rt` names the state a transition leads to. When it names another transition (`goHome` instead of `Home`), the diagram draws an edge into a transition, which is not a place the user can be.
+
+**How to fix:** Point `rt` at the state:
+```diff
+- { "id": "goBack", "type": "safe", "rt": "#goHome" }
++ { "id": "goBack", "type": "safe", "rt": "#Home" }
 ```
 
 ---

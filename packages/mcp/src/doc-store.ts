@@ -19,8 +19,8 @@ import type { AlpsDoc } from "@alps-asd/app-state-diagram/parser/alps-parser.js"
 import {
   DOC_DIR,
   INLINE_DOC_MAX_LENGTH,
+  newDocFile,
   resolveSafeLocalPath,
-  safeFileName,
   serializeLike,
   shouldExternalize,
 } from "./doc-utils.js";
@@ -93,7 +93,7 @@ export function setDescriptorDoc(
 
   if (external) {
     // Reuse the existing local doc file location when present
-    const docFile = hasExternalDoc ? existingHref! : `${DOC_DIR}/${safeFileName(id)}.md`;
+    const docFile = hasExternalDoc ? existingHref! : newDocFile(baseDir, id);
     const docFilePath = resolveSafeLocalPath(baseDir, docFile);
     if (!docFilePath) {
       // Reachable only when the default doc dir is a symlink escaping baseDir

@@ -35,6 +35,12 @@ describe("alps2mermaid tag filter", () => {
     const text = (result.content[0] as { text: string }).text;
     expect(text).toContain("Home --> Cart");
     expect(text).not.toContain("AdminTop");
+    expect(text).toContain("✅ Mermaid classDiagram generated (tag filter cart: 1 of 5 descriptors tagged)");
+  });
+
+  it("does not add a filter summary without a tag filter", async () => {
+    const result = await handleAlps2Mermaid({ alps_content: PROFILE });
+    expect((result.content[0] as { text: string }).text).not.toContain("tag filter");
   });
 
   it("accepts comma or space separated tags", async () => {
@@ -75,6 +81,7 @@ describe("alps2svg tag filter and output", () => {
       const result = await handleAlps2Svg({ alps_content: PROFILE, tag: "cart", output: outPath });
       const text = (result.content[0] as { text: string }).text;
       expect(text).toContain(outPath);
+      expect(text).toContain("(tag filter cart: 1 of 5 descriptors tagged)");
       const svg = fs.readFileSync(outPath, "utf-8");
       expect(svg).toContain("<svg");
       expect(svg).toContain("Cart");

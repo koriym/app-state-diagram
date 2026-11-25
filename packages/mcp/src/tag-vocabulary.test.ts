@@ -109,6 +109,36 @@ describe("validate_alps vocabulary option", () => {
     expect(text).not.toContain('Unknown tag "checkout"');
   });
 
+  it("reports how many descriptors carry an unknown tag, so a tag rename stands out", async () => {
+    // The shape of a tag migration that went wrong: the old tag is still on
+    // 142 descriptors while the new tag in the vocabulary is used nowhere
+    const descriptor = [{ id: "Cart", tag: "checkout catalog" }];
+    for (let i = 0; i < 142; i++) {
+      descriptor.push({ id: `field${i}`, tag: "flow-purchase" });
+    }
+    const profile = JSON.stringify({ alps: { title: "Store", descriptor } });
+
+    const text = (await handleValidateAlps({ alps_content: profile, vocabulary: vocabularyPath })).content[0].text;
+
+    expect(text).toContain(
+      `- [W005] Unknown tag "flow-purchase" (not defined in ${vocabularyPath}) on 142 descriptors: field0, field1, field2, field3, field4, …`
+    );
+    expect(text).toContain(`**Defined but unused tags** (${vocabularyPath}): flow-customer-purchase`);
+  });
+
+  it("names href-only and anonymous descriptors carrying an unknown tag", async () => {
+    const profile = JSON.stringify({
+      alps: {
+        title: "Store",
+        descriptor: [{ id: "Cart", descriptor: [{ href: "#price", tag: "pricing" }] }, { tag: "pricing" }, { id: "price" }],
+      },
+    });
+
+    const text = (await handleValidateAlps({ alps_content: profile, vocabulary: vocabularyPath })).content[0].text;
+
+    expect(text).toContain(`on 2 descriptors: #price, (anonymous)`);
+  });
+
   it("lists defined but unused tags informationally", async () => {
     const result = await handleValidateAlps({ alps_content: PROFILE, vocabulary: vocabularyPath });
 

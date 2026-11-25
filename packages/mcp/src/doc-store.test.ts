@@ -147,6 +147,38 @@ describe('setDescriptorDoc', () => {
     expect(result.docFile).toBe(`${DOC_DIR}/a-b-c.md`);
   });
 
+  it('never overwrites a doc file kept by a renamed descriptor', () => {
+    const { renameDescriptor, addDescriptor } = require('./descriptor-store');
+    setDescriptorDoc(profilePath, 'Catalog', '# Catalog\n\nThe original catalog.');
+    renameDescriptor(profilePath, 'Catalog', 'ProductList');
+    addDescriptor(profilePath, { id: 'Catalog' });
+
+    const result = setDescriptorDoc(profilePath, 'Catalog', '# Catalog\n\nA new concept.');
+
+    expect(result.docFile).toBe(`${DOC_DIR}/Catalog-2.md`);
+    expect(fs.readFileSync(path.join(dir, DOC_DIR, 'Catalog.md'), 'utf-8')).toBe('# Catalog\n\nThe original catalog.\n');
+    expect(resolveDoc(dir, { href: `${DOC_DIR}/Catalog.md` }).text).toContain('The original catalog.');
+  });
+
+  it('gives ids with the same safe file name separate doc files', () => {
+    const profile = { alps: { descriptor: [{ id: 'user:name' }, { id: 'user-name' }] } };
+    fs.writeFileSync(profilePath, JSON.stringify(profile));
+
+    expect(setDescriptorDoc(profilePath, 'user:name', 'first\ndoc').docFile).toBe(`${DOC_DIR}/user-name.md`);
+    expect(setDescriptorDoc(profilePath, 'user-name', 'second\ndoc').docFile).toBe(`${DOC_DIR}/user-name-2.md`);
+    expect(fs.readFileSync(path.join(dir, DOC_DIR, 'user-name.md'), 'utf-8')).toBe('first\ndoc\n');
+  });
+
+  it('does not overwrite an orphaned doc file left by switching to inline', () => {
+    setDescriptorDoc(profilePath, 'Home', '# Home\n\nKept.');
+    setDescriptorDoc(profilePath, 'Home', 'Inline now.', 'inline');
+
+    const result = setDescriptorDoc(profilePath, 'Home', '# Home\n\nAgain external.');
+
+    expect(result.docFile).toBe(`${DOC_DIR}/Home-2.md`);
+    expect(fs.readFileSync(path.join(dir, DOC_DIR, 'Home.md'), 'utf-8')).toBe('# Home\n\nKept.\n');
+  });
+
   it('preserves the original indentation', () => {
     fs.writeFileSync(profilePath, JSON.stringify(PROFILE, null, 4) + '\n');
     setDescriptorDoc(profilePath, 'Home', 'Doc.');
@@ -181,6 +213,8 @@ describe('setDescriptorDoc', () => {
   it('does not reuse unsafe existing doc.href values as write targets', () => {
     const unsafeHrefs = ['../escape.md', '/etc/escape.md', 'file:///etc/escape.md', 'a\\b.md'];
     for (const href of unsafeHrefs) {
+      // Each href is a separate scenario: a doc file left by the previous one would be kept, not reused
+      fs.rmSync(path.join(dir, 'alps'), { recursive: true, force: true });
       const profile = {
         alps: { descriptor: [{ id: 'Home', type: 'semantic', doc: { href } }] },
       };

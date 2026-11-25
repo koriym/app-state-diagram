@@ -3,7 +3,8 @@ import * as path from "path";
 import { XMLBuilder, XMLParser, XMLValidator } from "fast-xml-parser";
 import type { AddDescriptorInput, AddDescriptorResult, RenameResult, SetTagsInput, SetTagsResult } from "./descriptor-store.js";
 import type { DocPlacement, SetDocResult } from "./doc-store.js";
-import { decodeXmlReferences, DOC_DIR, resolveSafeLocalPath, safeFileName, shouldExternalize, XML_ROUNDTRIP_OPTIONS } from "./doc-utils.js";
+import { decodeXmlReferences, newDocFile, resolveSafeLocalPath, shouldExternalize, XML_ROUNDTRIP_OPTIONS } from "./doc-utils.js";
+import { isTransitionType, rtTransitionWarning } from "./descriptor-rules.js";
 
 const ATTRS = ":@";
 const ATTR_PREFIX = "@_";
@@ -31,7 +32,7 @@ export function setXmlDescriptorDoc(profilePath: string, id: string, doc: string
   const docNode = existingDocNode ?? insertDocNode(descriptor);
 
   if (external) {
-    const docFile = hasExternalDoc ? existingHref! : `${DOC_DIR}/${safeFileName(id)}.md`;
+    const docFile = hasExternalDoc ? existingHref! : newDocFile(profile.baseDir, id);
     const docFilePath = resolveSafeLocalPath(profile.baseDir, docFile);
     if (!docFilePath) throw new Error(`Unsafe doc path: ${docFile}`);
     fs.mkdirSync(path.dirname(docFilePath), { recursive: true });
@@ -66,7 +67,9 @@ export function addXmlDescriptor(profilePath: string, input: AddDescriptorInput)
     const rt = /^#|:|\//.test(input.rt) || input.rt.includes("#") ? input.rt : `#${input.rt}`;
     attrs.push(["rt", rt]);
     const target = rt.startsWith("#") ? rt.substring(1) : null;
-    if (target && !findXmlDescriptorById(profile.alpsNode, target)) warnings.push(`rt target "#${target}" does not exist yet`);
+    const targetDescriptor = target ? findXmlDescriptorById(profile.alpsNode, target) : null;
+    if (target && !targetDescriptor) warnings.push(`rt target "#${target}" does not exist yet`);
+    else if (target && isTransitionType(getAttr(targetDescriptor!, "type"))) warnings.push(rtTransitionWarning(target));
   }
   if (input.tag) attrs.push(["tag", input.tag]);
 

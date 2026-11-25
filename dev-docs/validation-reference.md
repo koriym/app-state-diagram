@@ -223,6 +223,22 @@ Warnings indicate potential issues or deviations from best practices.
 { "id": "doCheckout", "type": "unsafe", "rt": "#Done" }
 ```
 
+### W007: rt points to a transition
+
+**Message:** `rt of "{id}" points to the transition #{target}; rt should name the state the transition leads to`
+
+**Cause:** A descriptor's `rt` refers to a `safe`/`unsafe`/`idempotent` descriptor instead of a state, typically `goHome` written where `Home` was meant. `alps_add_descriptor` reports the same problem as a warning when it writes such an `rt`.
+
+**Solution:** Point `rt` at the state the transition leads to.
+
+```json
+// Triggers warning
+{ "id": "goBack", "type": "safe", "rt": "#goHome" }
+
+// No warning
+{ "id": "goBack", "type": "safe", "rt": "#Home" }
+```
+
 ## Suggestions (S-codes)
 
 Suggestions are optional improvements to enhance your ALPS profile.
@@ -264,4 +280,5 @@ Suggestions are optional improvements to enhance your ALPS profile.
 | W002 | Warning | Safe transition should start with "go" |
 | W003 | Warning | Unsafe/idempotent should start with "do" |
 | W006 | Warning | Transition defined inside another descriptor |
+| W007 | Warning | rt points to a transition instead of a state |
 | S001 | Suggestion | Consider adding doc to transition |

@@ -128,9 +128,14 @@ The MCP server consumes the vocabulary file:
 
 - **`validate_alps`** with `vocabulary: "tags.html"` checks every tag used
   in the profile against the `<dt>` ids. Tags not defined in the vocabulary
-  are reported as `W005` warnings ("Unknown tag ..."), and tags defined but
+  are reported as `W005` warnings ("Unknown tag ..."), with the number of
+  descriptors carrying each one and the first few ids, and tags defined but
   never used are listed informationally — so typos surface instead of
-  silently creating new categories.
+  silently creating new categories. A tag rename that missed descriptors
+  shows as the old tag unknown on many descriptors and the new tag unused.
+- **`alps2mermaid` / `alps2svg`** with `tag` report how many descriptors the
+  filter matched ("1 of 5 descriptors tagged"), so a slice that shrank is
+  visible.
 - **`alps_tags`** lists the tags in use, grouped by facet with usage counts;
   given `vocabulary`, each tag is joined with its definition (`defined`,
   `title`).

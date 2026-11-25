@@ -14,6 +14,7 @@ import { findDescriptorById, walkDescriptors } from "@alps-asd/app-state-diagram
 import type { AlpsDescriptor } from "@alps-asd/app-state-diagram/parser/alps-parser.js";
 import { serializeLike } from "./doc-store.js";
 import { addXmlDescriptor, renameXmlDescriptor, setXmlDescriptorTags } from "./xml-store.js";
+import { isTransitionType, rtTransitionWarning } from "./descriptor-rules.js";
 
 export interface AddDescriptorInput {
   id: string;
@@ -127,8 +128,13 @@ export function addDescriptor(profilePath: string, input: AddDescriptorInput): A
     const rt = /^#|:|\//.test(input.rt) || input.rt.includes("#") ? input.rt : `#${input.rt}`;
     descriptor.rt = rt;
     const target = rt.startsWith("#") ? rt.substring(1) : null;
-    if (target && !findDescriptorById(topLevel, target)) {
-      warnings.push(`rt target "#${target}" does not exist yet`);
+    if (target) {
+      const targetDescriptor = findDescriptorById(topLevel, target);
+      if (!targetDescriptor) {
+        warnings.push(`rt target "#${target}" does not exist yet`);
+      } else if (isTransitionType(targetDescriptor.type)) {
+        warnings.push(rtTransitionWarning(target));
+      }
     }
   }
 

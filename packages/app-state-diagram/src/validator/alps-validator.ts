@@ -1,6 +1,7 @@
 import { ValidationResult, ValidationIssue } from './types';
 
 const VALID_TYPES = ['semantic', 'safe', 'unsafe', 'idempotent'];
+const TRANSITION_TYPES = ['safe', 'unsafe', 'idempotent'];
 
 export class AlpsValidator {
   validate(document: any): ValidationResult {
@@ -40,6 +41,7 @@ export class AlpsValidator {
     }
 
     // Collect all ids for reference checking
+    this.transitionIds = new Set<string>();
     const allIds = this.collectIds(alps.descriptor);
     const referencedIds = new Set<string>();
 
@@ -57,10 +59,16 @@ export class AlpsValidator {
     };
   }
 
+  /** Ids of safe/unsafe/idempotent descriptors, collected by collectIds() */
+  private transitionIds = new Set<string>();
+
   private collectIds(descriptors: any[], ids: Set<string> = new Set()): Set<string> {
     for (const desc of descriptors) {
       if (desc.id) {
         ids.add(desc.id);
+        if (TRANSITION_TYPES.includes(desc.type)) {
+          this.transitionIds.add(desc.id);
+        }
       }
       if (desc.descriptor && Array.isArray(desc.descriptor)) {
         this.collectIds(desc.descriptor, ids);
@@ -154,6 +162,15 @@ export class AlpsValidator {
             code: 'E004',
             severity: 'error',
             message: `Broken reference: ${desc.rt} does not exist`,
+            path: descPath,
+            id: desc.id
+          });
+        } else if (this.transitionIds.has(refId)) {
+          // W007 - rt names another transition instead of the state it leads to
+          warnings.push({
+            code: 'W007',
+            severity: 'warning',
+            message: `rt of "${desc.id}" points to the transition ${desc.rt}; rt should name the state the transition leads to`,
             path: descPath,
             id: desc.id
           });

@@ -56,13 +56,15 @@ nvm use 20
 
 ## Available Tools
 
+Every tool declares MCP tool annotations: the query tools are `readOnlyHint: true`; the tools that write files (`alps_set_doc`, `alps_add_descriptor`, `alps_set_tags`, `alps_rename`, and `alps2svg` with `output`) are `readOnlyHint: false`, with `destructiveHint` set when they can replace or remove existing content. Clients can use this to decide which calls need confirmation.
+
 ### validate_alps
 
 Validate an ALPS profile and get detailed error feedback.
 
 **Parameters:**
 - `alps_content` (required): ALPS profile content (XML or JSON format)
-- `vocabulary` (optional): Path to a tag vocabulary file (`tags.html` defining each tag as a `<dt>` id — see [ALPS Tag Vocabulary](../../docs/tag-vocabulary.md)). Tags used in the profile but not defined there are reported as `W005` warnings, and tags defined but never used are listed informationally — so typos surface instead of silently creating new categories.
+- `vocabulary` (optional): Path to a tag vocabulary file (`tags.html` defining each tag as a `<dt>` id — see [ALPS Tag Vocabulary](../../docs/tag-vocabulary.md)). Tags used in the profile but not defined there are reported as `W005` warnings with the number of descriptors carrying them, and tags defined but never used are listed informationally — so typos and incomplete tag renames surface instead of silently creating new categories.
 
 **Example prompt:**
 > "Validate this ALPS profile and tell me if there are any errors"
@@ -260,6 +262,8 @@ alps/
 
 Existing local `doc.href` layouts keep working: any safe local href is honored and updated in place. Reading tools resolve these links and inline the file content automatically. Paths escaping the profile directory (absolute, `../`, escaping symlinks) are rejected.
 
+Existing files are never overwritten by a new doc. If `alps/docs/<id>.md` is already taken (for example, a renamed descriptor keeps its doc file under the old name, or two ids map to the same file name), the doc goes to `alps/docs/<id>-2.md`, `-3.md`, and so on.
+
 ## Example Workflow
 
 1. Ask the AI to validate your ALPS profile:
@@ -293,6 +297,7 @@ Existing local `doc.href` layouts keep working: any safe local href is honored a
 | W003 | Warning | Unsafe/idempotent should start with "do" |
 | W005 | Warning | Tag not defined in the vocabulary file |
 | W006 | Warning | Transition defined inside another descriptor (not shown in diagrams) |
+| W007 | Warning | rt points to a transition instead of a state |
 | S001 | Suggestion | Consider adding doc to transition |
 
 See [Validation Reference](../../dev-docs/validation-reference.md) for detailed explanations.

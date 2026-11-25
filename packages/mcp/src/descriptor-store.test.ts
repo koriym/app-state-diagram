@@ -55,6 +55,14 @@ describe("addDescriptor", () => {
     expect(goCart).toEqual({ id: "goCart", type: "safe", rt: "#Cart" });
   });
 
+  it("warns when rt names a transition instead of a state", () => {
+    addDescriptor(profilePath, { id: "goHome", type: "safe", rt: "Home" });
+    expect(addDescriptor(profilePath, { id: "goBack", type: "safe", rt: "goHome" }).warnings).toEqual([
+      'rt target "#goHome" is a transition, not a state (W007)',
+    ]);
+    expect(addDescriptor(profilePath, { id: "goHomeAgain", type: "safe", rt: "Home" }).warnings).toEqual([]);
+  });
+
   it("defines the descriptor at the top level and references it from the parent", () => {
     const result = addDescriptor(profilePath, { id: "greeting", parent: "Home" });
     expect(result).toEqual({ id: "greeting", createdChildren: [], warnings: [], referencedFrom: "Home" });

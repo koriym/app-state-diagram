@@ -14,6 +14,9 @@ const {
   handleCrawlAndExtract,
   handleValidateOpenapi,
   getEmbeddedGuide,
+  TOOLS,
+  TOOL_ANNOTATIONS,
+  listTools,
 } = require('./index');
 const fs = require('fs');
 const zlib = require('zlib');
@@ -66,6 +69,33 @@ function makeLargeAlpsProfile(): string {
 
   return JSON.stringify({ alps: { version: '1.0', title: 'Perf Fixture', descriptor } }, null, 2);
 }
+
+describe('tool annotations', () => {
+  type Annotated = { name: string; annotations: Record<string, boolean> };
+  const byName = (): Record<string, Record<string, boolean>> =>
+    Object.fromEntries((listTools() as Annotated[]).map((tool) => [tool.name, tool.annotations]));
+
+  it('annotates every listed tool, and only listed tools', () => {
+    const names = (TOOLS as { name: string }[]).map((tool) => tool.name).sort();
+    expect(Object.keys(TOOL_ANNOTATIONS).sort()).toEqual(names);
+    for (const tool of listTools() as Annotated[]) {
+      expect(tool.annotations).toBeDefined();
+    }
+  });
+
+  it('marks readers read-only and profile writers as changing files', () => {
+    const annotations = byName();
+    for (const name of ['validate_alps', 'alps2mermaid', 'alps_guide', 'alps_editor_url', 'alps_overview', 'alps_search', 'alps_tags', 'alps_descriptor', 'alps_paths']) {
+      expect(annotations[name]).toMatchObject({ readOnlyHint: true, openWorldHint: false });
+    }
+    for (const name of ['alps2svg', 'alps_set_doc', 'alps_add_descriptor', 'alps_set_tags', 'alps_rename']) {
+      expect(annotations[name]).toMatchObject({ readOnlyHint: false, idempotentHint: true, openWorldHint: false });
+    }
+    expect(annotations.alps_add_descriptor.destructiveHint).toBe(false);
+    expect(annotations.alps_rename.destructiveHint).toBe(true);
+    expect(annotations.validate_openapi.openWorldHint).toBe(true);
+  });
+});
 
 describe('MCP Handler Functions', () => {
   beforeEach(() => {
